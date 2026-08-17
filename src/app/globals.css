@@ -512,9 +512,44 @@
       border-bottom: 0;
     }
   }
+
+  /* Scroll reveal. The hidden state only exists where scripting is on, so a
+     page loaded without JavaScript shows everything immediately instead of
+     staying blank — the landing has to work either way. */
+  .reveal {
+    opacity: 1;
+  }
+
+  @media (scripting: enabled) {
+    .reveal {
+      opacity: 0;
+      transform: translateY(12px);
+      transition:
+        opacity 0.5s ease,
+        transform 0.5s ease;
+    }
+    .reveal[data-shown="true"] {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* A printed page has no scroll events, so nothing would ever reveal. */
+  @media print {
+    .reveal {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-shown="true"] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
   *,
   *::before,
   *::after {
