@@ -1,24 +1,169 @@
 @import "tailwindcss";
 
-/* Design tokens ported verbatim from the prototype (controle-de-vagas.jsx).
-   The palette is the product's identity — do not add a second accent colour. */
-@theme {
-  --color-paper: #dbd9d1;
-  --color-card: #f7f6f2;
-  --color-sheet: #fffefb;
-  --color-ink: #191a17;
-  --color-muted: #6d6a61;
-  --color-faint: #a8a59b;
-  --color-rule: #c2bfb5;
-  --color-stamp: #6c3fa8;
-  --color-flag: #a93726;
+/* ===========================================================================
+   Ramps — the raw values.
+   The prototype had seven loose colours. These are the same colours arranged
+   as a scale, which is what makes a second theme possible at all: a theme is
+   a different mapping of semantics onto ramps, not a second set of literals.
+   =========================================================================== */
+
+:root {
+  /* Warm neutral, the paper. --paper-200 is the prototype's original ground. */
+  --paper-0: #fffefb;
+  --paper-50: #fafaf9;
+  --paper-100: #f7f6f2;
+  --paper-200: #dbd9d1;
+  --paper-300: #c2bfb5;
+  /* Both are text colours, so both must clear 4.5:1 on the surfaces they
+     sit on. The prototype's #A8A59B and #6D6A61 did not — #6D6A61 on paper
+     was 3.82:1. Darkened to the minimum that passes. */
+  --paper-400: #726f66;
+  --paper-600: #5f5c54;
+  --paper-900: #191a17;
+
+  /* The dark ground keeps the same warm bias, so the accent behaves the same
+     way on both. A neutral-grey dark theme would make the violet turn cold. */
+  --carbon-900: #191813;
+  --carbon-800: #211f19;
+  --carbon-700: #26241d;
+  --carbon-500: #3a3730;
+  --carbon-400: #918b7d;
+  --carbon-300: #9c9788;
+  --carbon-50: #e7e4d9;
+
+  /* Accents in three tiers. `base` sits on paper, `strong` is its pressed and
+     hover state, `neon` is the version that survives a dark ground. */
+  --violet-base: #6c3fa8;
+  --violet-strong: #55308a;
+  --violet-neon: #b292e8;
+
+  --rust-base: #a93726;
+  --rust-strong: #8a2c1f;
+  --rust-neon: #d8735e;
+}
+
+/* ---------------------------------------------------------------------------
+   Semantics — light. Components only ever speak this vocabulary.
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  --ground: var(--paper-200);
+  --surface: var(--paper-100);
+  --raised: var(--paper-0);
+  --rule: var(--paper-300);
+  --faint: var(--paper-400);
+  --muted: var(--paper-600);
+  --text: var(--paper-900);
+
+  --accent: var(--violet-base);
+  --accent-strong: var(--violet-strong);
+  --accent-wash: color-mix(in oklab, var(--violet-base) 9%, transparent);
+  --accent-edge: color-mix(in oklab, var(--violet-base) 30%, transparent);
+  --on-accent: #fff;
+
+  --danger: var(--rust-base);
+  --danger-wash: color-mix(in oklab, var(--rust-base) 9%, transparent);
+
+  --paper-shadow: 3px 3px 0 rgb(25 26 23 / 0.07);
+}
+
+/* Unstamped documents follow the OS; an explicit light choice still wins. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ground: var(--carbon-900);
+    --surface: var(--carbon-800);
+    --raised: var(--carbon-700);
+    --rule: var(--carbon-500);
+    --faint: var(--carbon-400);
+    --muted: var(--carbon-300);
+    --text: var(--carbon-50);
+
+    --accent: var(--violet-neon);
+    --accent-strong: #c8aef0;
+    --accent-wash: color-mix(in oklab, var(--violet-neon) 13%, transparent);
+    --accent-edge: color-mix(in oklab, var(--violet-neon) 34%, transparent);
+    --on-accent: #1a1712;
+
+    --danger: var(--rust-neon);
+    --danger-wash: color-mix(in oklab, var(--rust-neon) 13%, transparent);
+
+    --paper-shadow: 3px 3px 0 rgb(0 0 0 / 0.32);
+  }
+}
+
+/* An explicit dark choice wins over a light OS. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ground: var(--carbon-900);
+  --surface: var(--carbon-800);
+  --raised: var(--carbon-700);
+  --rule: var(--carbon-500);
+  --faint: var(--carbon-400);
+  --muted: var(--carbon-300);
+  --text: var(--carbon-50);
+
+  --accent: var(--violet-neon);
+  --accent-strong: #c8aef0;
+  --accent-wash: color-mix(in oklab, var(--violet-neon) 13%, transparent);
+  --accent-edge: color-mix(in oklab, var(--violet-neon) 34%, transparent);
+  --on-accent: #1a1712;
+
+  --danger: var(--rust-neon);
+  --danger-wash: color-mix(in oklab, var(--rust-neon) 13%, transparent);
+
+  --paper-shadow: 3px 3px 0 rgb(0 0 0 / 0.32);
+}
+
+/* ===========================================================================
+   Tailwind theme. `inline` keeps the var() reference in the generated
+   utilities instead of copying the value, which is what lets a theme swap at
+   runtime without regenerating CSS.
+   =========================================================================== */
+
+@theme inline {
+  --color-paper: var(--ground);
+  --color-card: var(--surface);
+  --color-sheet: var(--raised);
+  --color-rule: var(--rule);
+  --color-faint: var(--faint);
+  --color-muted: var(--muted);
+  --color-ink: var(--text);
+
+  --color-stamp: var(--accent);
+  --color-stamp-strong: var(--accent-strong);
+  --color-stamp-wash: var(--accent-wash);
+  --color-stamp-edge: var(--accent-edge);
+  --color-on-stamp: var(--on-accent);
+
+  --color-flag: var(--danger);
+  --color-flag-wash: var(--danger-wash);
 
   --font-ui: var(--font-archivo), "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-courier-prime), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: var(--font-mono-face), ui-monospace, "SF Mono", Menlo, monospace;
 
-  --shadow-paper: 3px 3px 0 rgb(25 26 23 / 0.07);
-  --shadow-popover: 3px 3px 0 rgb(25 26 23 / 0.12);
+  /* Type scale, ten steps. Replaces the arbitrary pixel values the port had
+     scattered through the components. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3.125rem;
+  --text-6xl: 4.125rem;
+
+  --shadow-paper: var(--paper-shadow);
 }
+
+/* =========================================================================== */
 
 @layer base {
   html {
@@ -26,14 +171,19 @@
   }
 
   body {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
+    background-color: var(--ground);
+    color: var(--text);
     font-family: var(--font-ui);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-stamp);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
+  }
+
+  /* Figures line up in the register without hand-tuned widths. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -42,60 +192,36 @@
   .eyebrow {
     font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
   }
 
   /* The signature element: the violet double-outlined stamp. */
   .stamp {
     display: inline-block;
-    border: 2px solid var(--color-stamp);
+    border: 2px solid var(--accent);
     border-radius: 3px;
     padding: 5px 10px 4px;
-    color: var(--color-stamp);
+    color: var(--accent);
     font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
     text-align: center;
-    box-shadow: inset 0 0 0 1px var(--color-stamp);
+    box-shadow: inset 0 0 0 1px var(--accent);
     opacity: 0.92;
   }
   .stamp-date {
     display: block;
     font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
   }
   .stamp-time {
     display: block;
     font-size: 10px;
     letter-spacing: 0.14em;
-    border-top: 1px solid var(--color-stamp);
+    border-top: 1px solid var(--accent);
     margin-top: 3px;
     padding-top: 3px;
-  }
-
-  /* Underlined text input, as in the prototype form. */
-  .field-input {
-    font-family: var(--font-ui);
-    font-size: 15px;
-    color: var(--color-ink);
-    background: transparent;
-    border: 0;
-    border-bottom: 1.5px solid var(--color-rule);
-    padding: 7px 2px;
-    border-radius: 0;
-    width: 100%;
-    transition: border-color 0.15s ease;
-  }
-  .field-input::placeholder {
-    color: var(--color-faint);
-  }
-  .field-input:focus {
-    outline: none;
-    border-bottom-color: var(--color-stamp);
-  }
-  .field-input:focus-visible {
-    outline: 2px solid var(--color-stamp);
-    outline-offset: 3px;
   }
 
   /* A field is one label plus one control. Grid cells stretch to the tallest
@@ -115,7 +241,7 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     font-weight: 600;
-    color: var(--color-muted);
+    color: var(--muted);
     display: flex;
     align-items: baseline;
     /* The hint moves to its own line as a unit instead of breaking mid-phrase. */
@@ -131,16 +257,41 @@
     font-weight: 400;
     letter-spacing: 0.01em;
     text-transform: none;
-    color: var(--color-faint);
+    color: var(--faint);
+  }
+
+  /* Underlined text input, as in the prototype form. */
+  .field-input {
+    font-family: var(--font-ui);
+    font-size: 15px;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-bottom: 1.5px solid var(--rule);
+    padding: 7px 2px;
+    border-radius: 0;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+  .field-input::placeholder {
+    color: var(--faint);
+  }
+  .field-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+  }
+  .field-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
   }
 
   .field-textarea {
     font-family: var(--font-ui);
-    font-size: 14px;
+    font-size: var(--text-sm);
     line-height: 1.5;
-    color: var(--color-ink);
-    background: var(--color-sheet);
-    border: 1px solid var(--color-rule);
+    color: var(--text);
+    background: var(--raised);
+    border: 1px solid var(--rule);
     border-radius: 2px;
     padding: 12px;
     width: 100%;
@@ -148,11 +299,11 @@
     transition: border-color 0.15s ease;
   }
   .field-textarea::placeholder {
-    color: var(--color-faint);
+    color: var(--faint);
   }
   .field-textarea:focus {
     outline: none;
-    border-color: var(--color-stamp);
+    border-color: var(--accent);
   }
 
   .btn {
@@ -161,16 +312,19 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    background: var(--color-stamp);
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
     border: 0;
     border-radius: 2px;
     padding: 12px 22px;
     cursor: pointer;
-    transition: transform 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      background-color 0.12s ease;
   }
   .btn:hover:not(:disabled) {
     transform: translateY(-1px);
+    background: var(--accent-strong);
   }
   .btn:active:not(:disabled) {
     transform: translateY(1px);
@@ -182,10 +336,13 @@
 
   .btn-quiet {
     background: transparent;
-    color: var(--color-stamp);
-    border: 1px solid rgb(108 63 168 / 0.4);
+    color: var(--accent);
+    border: 1px solid var(--accent-edge);
     padding: 9px 14px;
     font-size: 12px;
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--accent-wash);
   }
 
   /* Mono text button with a violet underline — used for inline actions. */
@@ -196,10 +353,13 @@
     cursor: pointer;
     font-family: var(--font-mono);
     font-size: 12px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-ink);
-    border-bottom: 1px solid var(--color-stamp);
+    color: var(--text);
+    border-bottom: 1px solid var(--accent);
+  }
+  .link-quiet:hover {
+    color: var(--accent);
   }
 
   .pill {
@@ -208,9 +368,9 @@
     gap: 8px;
     font-family: var(--font-mono);
     font-size: 13px;
-    background: rgb(108 63 168 / 0.08);
-    color: var(--color-stamp);
-    border: 1px solid rgb(108 63 168 / 0.28);
+    background: var(--accent-wash);
+    color: var(--accent);
+    border: 1px solid var(--accent-edge);
     border-radius: 2px;
     padding: 5px 6px 5px 10px;
   }
@@ -231,15 +391,15 @@
   }
   .pill button:hover {
     opacity: 1;
-    background: rgb(108 63 168 / 0.16);
+    background: var(--accent-edge);
   }
 
   .tag {
     display: inline-block;
     font-family: var(--font-mono);
     font-size: 12px;
-    background: rgb(108 63 168 / 0.08);
-    color: var(--color-stamp);
+    background: var(--accent-wash);
+    color: var(--accent);
     padding: 3px 8px;
     border-radius: 2px;
   }
@@ -255,10 +415,10 @@
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--color-muted);
+    color: var(--muted);
     font-weight: 600;
     padding: 10px 12px;
-    border-bottom: 1.5px solid var(--color-ink);
+    border-bottom: 1.5px solid var(--text);
     white-space: nowrap;
   }
   .docket-table th a {
@@ -267,18 +427,19 @@
   }
   .docket-table td {
     padding: 16px 12px;
-    border-bottom: 1px solid var(--color-rule);
+    border-bottom: 1px solid var(--rule);
     font-size: 15px;
     vertical-align: top;
-    background: var(--color-card);
+    background: var(--surface);
   }
   .docket-table tbody tr:hover td {
-    background: var(--color-sheet);
+    background: var(--raised);
   }
   .docket-cell-number {
     font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
     font-size: 12px;
-    color: var(--color-muted);
+    color: var(--muted);
     width: 58px;
     padding-top: 19px;
   }
@@ -287,10 +448,10 @@
   }
   .docket-note td {
     padding: 0 12px 16px 82px;
-    background: var(--color-card);
-    border-bottom: 1px solid var(--color-rule);
-    font-size: 14px;
-    color: var(--color-muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--rule);
+    font-size: var(--text-sm);
+    color: var(--muted);
     line-height: 1.5;
     white-space: pre-wrap;
   }
@@ -307,13 +468,13 @@
       width: 100%;
     }
     .docket-table tr {
-      border: 1px solid var(--color-rule);
+      border: 1px solid var(--rule);
       border-radius: 3px;
       margin-bottom: 14px;
       overflow: hidden;
     }
     .docket-table td {
-      border-bottom: 1px solid var(--color-rule);
+      border-bottom: 1px solid var(--rule);
       padding: 12px 14px;
     }
     .docket-table td:last-child {
@@ -326,7 +487,7 @@
       font-size: 10px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--color-muted);
+      color: var(--muted);
       margin-bottom: 5px;
     }
     .docket-cell-number {
@@ -340,7 +501,7 @@
     }
     .docket-note {
       display: block;
-      border: 1px solid var(--color-rule);
+      border: 1px solid var(--rule);
       border-top: 0;
       border-radius: 0 0 3px 3px;
       margin-bottom: 14px;

@@ -10,7 +10,7 @@ export default function ImportPage() {
     <>
       <header className="border-b-2 border-ink pb-4">
         <p className="eyebrow mb-1.5 text-stamp">Transfer of records</p>
-        <h1 className="text-[clamp(28px,5vw,42px)] leading-none font-bold tracking-[-0.02em]">
+        <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
           Import
         </h1>
         <p className="mt-2 max-w-[52ch] text-sm text-muted">

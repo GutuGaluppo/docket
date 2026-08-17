@@ -34,7 +34,7 @@ export default async function DocketPage({
       <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
         <div>
           <p className="eyebrow mb-1.5 text-stamp">Personal register · kept by you</p>
-          <h1 className="text-[clamp(28px,5vw,42px)] leading-none font-bold tracking-[-0.02em]">
+          <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
             Your docket
           </h1>
           <p className="mt-2 max-w-[46ch] text-sm text-muted">
@@ -43,13 +43,13 @@ export default async function DocketPage({
         </div>
         <div className="flex gap-6 font-mono">
           <div>
-            <b className="block text-[26px] leading-none font-bold">
+            <b className="block text-2xl leading-none font-bold">
               {String(counts.total).padStart(2, "0")}
             </b>
             <span className="text-[10px] tracking-[0.14em] text-muted uppercase">In total</span>
           </div>
           <div>
-            <b className="block text-[26px] leading-none font-bold">
+            <b className="block text-2xl leading-none font-bold">
               {String(counts.thisMonth).padStart(2, "0")}
             </b>
             <span className="text-[10px] tracking-[0.14em] text-muted uppercase">This month</span>
@@ -65,7 +65,7 @@ export default async function DocketPage({
             type="search"
             name="q"
             defaultValue={query.q}
-            className="min-w-[240px] rounded-[2px] border border-rule bg-transparent px-3 py-2 font-mono text-[13px] focus:border-stamp focus:outline-none"
+            className="min-w-[240px] rounded-[2px] border border-rule bg-sheet px-3 py-2 font-mono text-[13px] focus:border-stamp focus:outline-none"
             placeholder="Search company, position, stack or city"
             aria-label="Search your docket"
           />
@@ -85,7 +85,7 @@ export default async function DocketPage({
       {entries.length === 0 ? (
         <div className="rounded-[3px] border border-dashed border-rule bg-card px-6 py-12 text-center">
           <p className="eyebrow mb-2.5 text-stamp">Blank register</p>
-          <p className="text-[15px] text-muted">
+          <p className="text-base text-muted">
             {counts.total === 0 ? (
               <>
                 Your docket is empty. Stamp your first application above, or{" "}

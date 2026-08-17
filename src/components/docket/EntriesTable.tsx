@@ -93,7 +93,7 @@ export function EntriesTable({
               <td className="text-sm text-muted" data-label="City / country">
                 {entry.city ? (
                   <>
-                    <b className="block text-[15px] font-semibold text-ink">{entry.city}</b>
+                    <b className="block text-base font-semibold text-ink">{entry.city}</b>
                     {entry.country}
                   </>
                 ) : (
