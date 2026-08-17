@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="10" fill="#DBD9D1"/>
+  <g transform="rotate(-3 32 32)">
+    <rect x="9" y="15" width="46" height="34" rx="3" fill="none" stroke="#6C3FA8" stroke-width="4"/>
+    <rect x="15" y="21" width="34" height="22" rx="2" fill="none" stroke="#6C3FA8" stroke-width="1.5"/>
+    <text x="32" y="38" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+          font-weight="700" font-size="18" fill="#6C3FA8">D</text>
+  </g>
+</svg>
