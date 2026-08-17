@@ -110,11 +110,24 @@ export function StampForm() {
     errors.tags?.message ||
     "";
 
+  /*
+    Every control below carries `suppressHydrationWarning`. Password managers —
+    Dashlane, 1Password, LastPass — stamp their own attributes onto forms,
+    inputs and submit buttons before React hydrates, which React then reports as
+    a mismatch on every page load. The flag covers only each element's own
+    attributes, one level deep, so a genuine mismatch anywhere else still
+    reports; without it the warning fires constantly and stops being read.
+
+    `data-form-type="other"` is the hint that asks those extensions not to treat
+    this as a credential form. It is worth keeping — some managers honour it —
+    but it does not stop Dashlane from tagging the elements.
+  */
   return (
     <form
       onSubmit={onSubmit}
       noValidate
       data-form-type="other"
+      suppressHydrationWarning
       className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper"
     >
       <p className="eyebrow mb-4 text-muted">New entry</p>
@@ -127,6 +140,7 @@ export function StampForm() {
           <input
             id="company"
             data-form-type="other"
+            suppressHydrationWarning
             className="field-input"
             placeholder="e.g. Loudly"
             {...register("company")}
@@ -136,13 +150,12 @@ export function StampForm() {
         <div className="field">
           <label className="field-label" htmlFor="website">
             Website
-            <span className="field-hint">
-              optional — brings the logo
-            </span>
+            <span className="field-hint">optional — brings the logo</span>
           </label>
           <input
             id="website"
             data-form-type="other"
+            suppressHydrationWarning
             className="field-input"
             autoComplete="off"
             placeholder={company ? probableDomain(company) : "e.g. loudly.com"}
@@ -166,6 +179,7 @@ export function StampForm() {
           <input
             id="position"
             data-form-type="other"
+            suppressHydrationWarning
             className="field-input"
             placeholder="e.g. Senior Frontend Developer"
             {...register("position")}
@@ -175,13 +189,12 @@ export function StampForm() {
         <div className="field col-span-full">
           <label className="field-label" htmlFor="jobDescription">
             Job description
-            <span className="field-hint">
-              paste the ad — technologies become tags on their own
-            </span>
+            <span className="field-hint">paste the ad — technologies become tags on their own</span>
           </label>
           <textarea
             id="jobDescription"
             data-form-type="other"
+            suppressHydrationWarning
             rows={5}
             className="field-textarea min-h-[108px]"
             placeholder="Paste the requirements here. e.g. You'll work with React, TypeScript and Next.js, with a Node.js/GraphQL backend deployed on AWS…"
@@ -224,6 +237,7 @@ export function StampForm() {
           <div className="mt-3">
             <input
               data-form-type="other"
+              suppressHydrationWarning
               className="field-input"
               value={manualDraft}
               onChange={(event) => setManualDraft(event.target.value)}
@@ -242,13 +256,12 @@ export function StampForm() {
         <div className="field col-span-full">
           <label className="field-label" htmlFor="notes">
             Notes
-            <span className="field-hint">
-              optional — recruiter, salary range, link to the ad
-            </span>
+            <span className="field-hint">optional — recruiter, salary range, link to the ad</span>
           </label>
           <textarea
             id="notes"
             data-form-type="other"
+            suppressHydrationWarning
             rows={2}
             className="field-textarea min-h-[62px]"
             placeholder="e.g. referred by Pedro · 70–80k · technical interview on Friday"
@@ -258,7 +271,7 @@ export function StampForm() {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4">
-        <button type="submit" className="btn" disabled={pending}>
+        <button type="submit" className="btn" disabled={pending} suppressHydrationWarning>
           {pending ? "Stamping…" : "Stamp application"}
         </button>
         {firstError ? (

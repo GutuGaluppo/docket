@@ -31,6 +31,7 @@ export function DeleteAccountForm() {
           name="confirm"
           autoComplete="off"
           required
+          suppressHydrationWarning
           className="field-input font-mono"
           placeholder="DELETE"
         />

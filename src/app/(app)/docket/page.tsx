@@ -60,7 +60,12 @@ export default async function DocketPage({
       <StampForm />
 
       <div className="my-8 mb-2.5 flex flex-wrap items-center justify-between gap-3">
-        <form method="get" action="/docket" className="flex items-center gap-2">
+        <form
+          method="get"
+          action="/docket"
+          className="flex items-center gap-2"
+          suppressHydrationWarning
+        >
           <input
             type="search"
             name="q"
@@ -68,10 +73,11 @@ export default async function DocketPage({
             className="min-w-[240px] rounded-[2px] border border-rule bg-sheet px-3 py-2 font-mono text-[13px] focus:border-stamp focus:outline-none"
             placeholder="Search company, position, stack or city"
             aria-label="Search your docket"
+            suppressHydrationWarning
           />
           <input type="hidden" name="sort" value={query.sort} />
           <input type="hidden" name="dir" value={query.dir} />
-          <button type="submit" className="link-quiet">
+          <button type="submit" className="link-quiet" suppressHydrationWarning>
             Search
           </button>
         </form>

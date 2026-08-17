@@ -28,9 +28,7 @@ export function ImportForm() {
 
       <label className="field-label mb-2" htmlFor="file">
         File
-        <span className="field-hint">
-          .json or .csv, up to 2 MB
-        </span>
+        <span className="field-hint">.json or .csv, up to 2 MB</span>
       </label>
       <input
         id="file"
@@ -38,11 +36,12 @@ export function ImportForm() {
         type="file"
         accept=".json,.csv,application/json,text/csv"
         required
+        suppressHydrationWarning
         className="w-full border-b-[1.5px] border-rule py-2 font-mono text-[13px] file:mr-3 file:cursor-pointer file:rounded-[2px] file:border file:border-stamp/40 file:bg-transparent file:px-3 file:py-1.5 file:font-mono file:text-[11px] file:tracking-[0.08em] file:text-stamp file:uppercase"
       />
 
       <div className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4">
-        <button type="submit" className="btn" disabled={pending}>
+        <button type="submit" className="btn" disabled={pending} suppressHydrationWarning>
           {pending ? "Reading…" : "Import"}
         </button>
         <span className="font-mono text-xs text-muted">
