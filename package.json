@@ -26,6 +26,7 @@
     "@auth/drizzle-adapter": "1.11.3",
     "@hookform/resolvers": "5.9.1",
     "@neondatabase/serverless": "1.1.0",
+    "@react-email/components": "^1.0.12",
     "@sentry/nextjs": "^10.70.0",
     "drizzle-orm": "0.45.2",
     "next": "15.5.23",
@@ -33,6 +34,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "7.85.0",
+    "resend": "^6.20.0",
     "server-only": "^0.0.1",
     "zod": "4.4.3"
   },
@@ -43,6 +45,7 @@
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
     "eslint-config-next": "15.5.23",
