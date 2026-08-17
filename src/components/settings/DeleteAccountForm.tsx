@@ -10,6 +10,7 @@ export function DeleteAccountForm() {
 
   return (
     <form
+      suppressHydrationWarning
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -22,7 +23,7 @@ export function DeleteAccountForm() {
       }}
       className="mt-4 flex flex-wrap items-end gap-3"
     >
-      <div className="field">
+      <div className="field" suppressHydrationWarning>
         <label className="field-label" htmlFor="confirm">
           Type DELETE to confirm
         </label>
@@ -39,6 +40,7 @@ export function DeleteAccountForm() {
       <button
         type="submit"
         disabled={pending}
+        suppressHydrationWarning
         className="btn cursor-pointer bg-flag disabled:opacity-55"
       >
         {pending ? "Deleting…" : "Delete account"}

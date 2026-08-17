@@ -45,9 +45,7 @@ export function BoardCard({
       }`}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-xs text-muted">
-          {protocolNumber(card.protocolNumber)}
-        </span>
+        <span className="font-mono text-xs text-muted">{protocolNumber(card.protocolNumber)}</span>
         {card.nextInterviewAt && (
           <span className="font-mono text-[10px] tracking-[0.1em] text-stamp uppercase">
             {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(
@@ -73,13 +71,14 @@ export function BoardCard({
         </div>
       )}
 
-      <label className="mt-1 flex flex-col gap-1">
+      <label className="mt-1 flex flex-col gap-1" suppressHydrationWarning>
         <span className="sr-only">
           Move {card.company} — {card.position} to another column
         </span>
         <select
           value={currentStageId}
           disabled={pending}
+          suppressHydrationWarning
           onChange={(event) => moveTo(event.target.value)}
           className="w-full cursor-pointer rounded-[2px] border border-rule bg-card px-2 py-1.5 font-mono text-[11px] tracking-[0.06em] uppercase focus:border-stamp focus:outline-none"
         >

@@ -3,11 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { scheduleInterview } from "@/server/actions/interviews";
-import {
-  DURATION_CHOICES,
-  REMINDER_CHOICES,
-  reminderLabel,
-} from "@/lib/validation/interview";
+import { DURATION_CHOICES, REMINDER_CHOICES, reminderLabel } from "@/lib/validation/interview";
 
 export type ApplicationOption = {
   id: string;
@@ -28,10 +24,15 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
   }
 
   if (!open) {
+    // Wrapped rather than returned bare: password managers stamp the container
+    // of a control as well as the control, and a bare button would push that
+    // requirement onto whatever page happens to render this.
     return (
-      <button type="button" className="btn" onClick={() => setOpen(true)}>
-        Schedule an interview
-      </button>
+      <div className="w-fit" suppressHydrationWarning>
+        <button type="button" className="btn" onClick={() => setOpen(true)} suppressHydrationWarning>
+          Schedule an interview
+        </button>
+      </div>
     );
   }
 
@@ -65,7 +66,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
       <p className="eyebrow mb-4 text-muted">New interview</p>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        <div className="field col-span-full">
+        <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="applicationId">
             Application
           </label>
@@ -84,7 +85,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           </select>
         </div>
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="title">
             What is it
           </label>
@@ -100,7 +101,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           />
         </div>
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="startsAtLocal">
             When
             <span className="field-hint">your local time</span>
@@ -116,7 +117,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           />
         </div>
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="durationMinutes">
             How long
           </label>
@@ -135,7 +136,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           </select>
         </div>
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="remindMinutes">
             Alert
             <span className="field-hint">fires in your calendar app</span>
@@ -155,7 +156,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           </select>
         </div>
 
-        <div className="field col-span-full">
+        <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="location">
             Where
             <span className="field-hint">optional — a link counts</span>
@@ -170,7 +171,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
           />
         </div>
 
-        <div className="field col-span-full">
+        <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="notes">
             Notes
             <span className="field-hint">optional — travels into the calendar event</span>
@@ -187,7 +188,10 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4">
+      <div
+        className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4"
+        suppressHydrationWarning
+      >
         <button type="submit" className="btn" disabled={pending} suppressHydrationWarning>
           {pending ? "Scheduling…" : "Schedule"}
         </button>

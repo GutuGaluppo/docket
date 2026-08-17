@@ -30,7 +30,7 @@ export default async function SignInPage({
         Sign in to open your docket. We use your account only to identify the record as yours.
       </p>
 
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3" suppressHydrationWarning>
         {configuredProviders.length === 0 ? (
           <p className="border border-dashed border-rule bg-card p-4 font-mono text-xs text-muted">
             No sign-in provider is configured. Set AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET or
@@ -40,12 +40,13 @@ export default async function SignInPage({
           configuredProviders.map((provider) => (
             <form
               key={provider.id}
+              suppressHydrationWarning
               action={async () => {
                 "use server";
                 await signIn(provider.id, { redirectTo: target });
               }}
             >
-              <button type="submit" className="btn w-full">
+              <button type="submit" className="btn w-full" suppressHydrationWarning>
                 {PROVIDER_LABELS[provider.id] ?? `Continue with ${provider.name}`}
               </button>
             </form>

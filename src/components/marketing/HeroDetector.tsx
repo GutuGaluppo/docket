@@ -25,7 +25,7 @@ export function HeroDetector() {
   const tags = useMemo(() => detectStack(text), [text]);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" suppressHydrationWarning>
       <label className="field-label" htmlFor="hero-detector">
         Paste any job ad
         <span className="field-hint">nothing is sent anywhere</span>

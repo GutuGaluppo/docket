@@ -133,7 +133,7 @@ export function StampForm() {
       <p className="eyebrow mb-4 text-muted">New entry</p>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="company">
             Company
           </label>
@@ -147,7 +147,7 @@ export function StampForm() {
           />
         </div>
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="website">
             Website
             <span className="field-hint">optional — brings the logo</span>
@@ -172,7 +172,7 @@ export function StampForm() {
           }}
         />
 
-        <div className="field">
+        <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="position">
             Position
           </label>
@@ -186,7 +186,7 @@ export function StampForm() {
           />
         </div>
 
-        <div className="field col-span-full">
+        <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="jobDescription">
             Job description
             <span className="field-hint">paste the ad — technologies become tags on their own</span>
@@ -234,7 +234,7 @@ export function StampForm() {
             )}
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3" suppressHydrationWarning>
             <input
               data-form-type="other"
               suppressHydrationWarning
@@ -253,7 +253,7 @@ export function StampForm() {
           </div>
         </div>
 
-        <div className="field col-span-full">
+        <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="notes">
             Notes
             <span className="field-hint">optional — recruiter, salary range, link to the ad</span>
@@ -270,7 +270,10 @@ export function StampForm() {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4">
+      <div
+        className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4"
+        suppressHydrationWarning
+      >
         <button type="submit" className="btn" disabled={pending} suppressHydrationWarning>
           {pending ? "Stamping…" : "Stamp application"}
         </button>

@@ -10,7 +10,13 @@ import { useEffect, useRef } from "react";
  * page. `prefers-reduced-motion` is honoured by the same stylesheet rather than
  * by a check here, which keeps the behaviour in one place.
  */
-export function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Reveal({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
