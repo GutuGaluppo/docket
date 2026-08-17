@@ -34,13 +34,6 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
   },
-  /**
-   * Launch switch. Every page today is either the register itself or a redirect
-   * to sign-in, so there is nothing worth indexing and a login screen would
-   * become the brand's first result. Remove this line and the matching rule in
-   * src/app/robots.ts on the same commit as the landing page.
-   */
-  { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
 const nextConfig: NextConfig = {
@@ -54,7 +47,21 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      /**
+       * The landing page is public and indexable. Everything behind a session
+       * is not: a header is stronger than robots.txt, which only asks.
+       */
+      {
+        source: "/:path(docket|board|calendar|settings|sign-in|monitoring)/:rest*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/api/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
   },
 };
 
