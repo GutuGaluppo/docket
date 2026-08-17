@@ -3,7 +3,7 @@ import "server-only";
 import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { applications, applicationTags, statusEvents, users } from "@/server/db/schema";
+import { applications, applicationTags, stages, statusEvents, users } from "@/server/db/schema";
 import type { Scope } from "./scope";
 
 export type AccountExport = {
@@ -17,11 +17,11 @@ export type AccountExport = {
     city: string | null;
     country: string | null;
     notes: string | null;
-    status: string;
+    stage: string | null;
     tags: string[];
     jobDescription: string | null;
     createdAt: string;
-    history: Array<{ status: string; occurredAt: string; note: string | null }>;
+    history: Array<{ stage: string; occurredAt: string; note: string | null }>;
   }>;
 };
 
@@ -49,7 +49,7 @@ export async function exportAccount(scope: Scope): Promise<AccountExport> {
       city: applications.city,
       country: applications.country,
       notes: applications.notes,
-      status: applications.status,
+      stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       jobDescription: applications.jobDescription,
       createdAt: applications.createdAt,
       tags: sql<string[]>`coalesce(
@@ -58,9 +58,9 @@ export async function exportAccount(scope: Scope): Promise<AccountExport> {
           where t.application_id = ${applications.id}),
         '{}'
       )`,
-      history: sql<Array<{ status: string; occurredAt: string; note: string | null }>>`coalesce(
+      history: sql<Array<{ stage: string; occurredAt: string; note: string | null }>>`coalesce(
         (select json_agg(json_build_object(
-                  'status', e.status,
+                  'stage', e.stage_name,
                   'occurredAt', e.occurred_at,
                   'note', e.note
                 ) order by e.occurred_at)

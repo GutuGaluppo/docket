@@ -24,6 +24,12 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { mode: "date", withTimezone: true }),
   image: text("image"),
+  /**
+   * Secret path segment for the calendar feed. Apple Calendar and Google
+   * Calendar fetch a subscription URL unauthenticated, so the URL itself is
+   * the credential. Null until the user first asks for the feed.
+   */
+  calendarToken: text("calendar_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -106,12 +112,33 @@ export const webhookEvents = pgTable("webhook_events", {
    The docket itself.
 --------------------------------------------------------------------------- */
 
-/** Free plan is capped at these three stages; Pro adds custom ones in phase 3. */
-export const applicationStatusEnum = pgEnum("application_status", [
-  "applied",
-  "interview",
-  "closed",
-]);
+/**
+ * A column on the board. Every user owns their own ordered set, seeded with a
+ * default funnel on first use and editable from there.
+ *
+ * `kind` is not decoration: the board needs to know where an entry starts and
+ * which columns end the process, and that must survive the user renaming
+ * "Offer received" to whatever they like.
+ */
+export const stageKindEnum = pgEnum("stage_kind", ["start", "middle", "won", "lost"]);
+
+export const stages = pgTable(
+  "stages",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Sparse ordering, so a column can be inserted between two others. */
+    position: integer("position").notNull(),
+    kind: stageKindEnum("kind").notNull().default("middle"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("stages_user_position_idx").on(t.userId, t.position)],
+);
 
 export const applications = pgTable(
   "applications",
@@ -131,7 +158,7 @@ export const applications = pgTable(
     country: text("country"),
     notes: text("notes"),
     /** Cache of the latest status_events row; status_events stays the history. */
-    status: applicationStatusEnum("status").notNull().default("applied"),
+    stageId: text("stage_id").references(() => stages.id, { onDelete: "set null" }),
     /** The pasted job ad. Kept so the detector can be re-run as the dictionary grows. */
     jobDescription: text("job_description"),
     /**
@@ -147,6 +174,7 @@ export const applications = pgTable(
     index("applications_user_created_idx").on(t.userId, t.createdAt.desc()),
     index("applications_user_company_idx").on(t.userId, t.company),
     uniqueIndex("applications_user_protocol_idx").on(t.userId, t.protocolNumber),
+    index("applications_stage_idx").on(t.stageId),
   ],
 );
 
@@ -176,11 +204,52 @@ export const statusEvents = pgTable(
     applicationId: text("application_id")
       .notNull()
       .references(() => applications.id, { onDelete: "cascade" }),
-    status: applicationStatusEnum("status").notNull(),
+    stageId: text("stage_id").references(() => stages.id, { onDelete: "set null" }),
+    /** Kept alongside the reference so history survives a column being deleted. */
+    stageName: text("stage_name").notNull(),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     note: text("note"),
   },
   (t) => [index("status_events_application_idx").on(t.applicationId, t.occurredAt)],
+);
+
+/**
+ * A scheduled interview. Reached only through its application, which is what
+ * ties it to an owner — there is no userId here on purpose, so a row cannot
+ * disagree with its parent about who it belongs to.
+ */
+export const interviews = pgTable(
+  "interviews",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    /** Minutes. The calendar needs a duration to emit a real DTEND. */
+    durationMinutes: integer("duration_minutes").notNull().default(60),
+    location: text("location"),
+    notes: text("notes"),
+    /**
+     * IANA zone the interview was scheduled in. Without it the month grid has
+     * to guess, and a 09:00 in Auckland lands on the wrong day in UTC.
+     */
+    timezone: text("timezone"),
+    /** Minutes before the start for the VALARM the calendar clients fire. */
+    remindMinutes: integer("remind_minutes").notNull().default(60),
+    /** Stable across edits so subscribed calendars update instead of duplicating. */
+    uid: text("uid")
+      .notNull()
+      .$defaultFn(() => `${crypto.randomUUID()}@docket.app`),
+    /** Bumped on every edit; calendar clients use it to pick the newer copy. */
+    sequence: integer("sequence").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("interviews_application_starts_idx").on(t.applicationId, t.startsAt)],
 );
 
 /* --------------------------------------------------------------------------- */
@@ -195,8 +264,22 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 
 export const applicationsRelations = relations(applications, ({ one, many }) => ({
   user: one(users, { fields: [applications.userId], references: [users.id] }),
+  stage: one(stages, { fields: [applications.stageId], references: [stages.id] }),
   tags: many(applicationTags),
   events: many(statusEvents),
+  interviews: many(interviews),
+}));
+
+export const stagesRelations = relations(stages, ({ one, many }) => ({
+  user: one(users, { fields: [stages.userId], references: [users.id] }),
+  applications: many(applications),
+}));
+
+export const interviewsRelations = relations(interviews, ({ one }) => ({
+  application: one(applications, {
+    fields: [interviews.applicationId],
+    references: [applications.id],
+  }),
 }));
 
 export const applicationTagsRelations = relations(applicationTags, ({ one }) => ({
@@ -223,7 +306,11 @@ export const schema = {
   applications,
   applicationTags,
   statusEvents,
+  stages,
+  interviews,
   usersRelations,
+  stagesRelations,
+  interviewsRelations,
   applicationsRelations,
   applicationTagsRelations,
   statusEventsRelations,
@@ -231,4 +318,6 @@ export const schema = {
 
 export type Application = typeof applications.$inferSelect;
 export type NewApplication = typeof applications.$inferInsert;
-export type ApplicationStatus = (typeof applicationStatusEnum.enumValues)[number];
+export type Stage = typeof stages.$inferSelect;
+export type StageKind = (typeof stageKindEnum.enumValues)[number];
+export type Interview = typeof interviews.$inferSelect;

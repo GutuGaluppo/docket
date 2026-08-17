@@ -85,7 +85,12 @@ describe("every statement is scoped", () => {
         const pins = (code: string) =>
           code.includes("scope.owned(") || /eq\(users\.id, scope\.userId\)/.test(code);
 
-        let scoped = pins(statement.text);
+        // An exemption must be written down, directly above the statement, with
+        // a reason. Anything unmarked still has to carry the owner predicate.
+        const preceding = source.slice(Math.max(0, statement.index - 220), statement.index);
+        const exempt = /scope-exempt:\s*\S+/.test(preceding.split("\n").slice(-3).join("\n"));
+
+        let scoped = exempt || pins(statement.text);
         if (!scoped) {
           // `.where(where)` — follow the local variable back to its assignment
           // inside the same function before calling this a leak.

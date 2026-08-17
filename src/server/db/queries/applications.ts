@@ -3,9 +3,9 @@ import "server-only";
 import { and, asc, count, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { applications, applicationTags, statusEvents } from "@/server/db/schema";
-import type { ApplicationStatus } from "@/server/db/schema";
+import { applications, applicationTags, stages, statusEvents } from "@/server/db/schema";
 import type { Scope } from "./scope";
+import { DEFAULT_STAGES, getFirstStageId } from "./stages";
 
 export type SortField =
   "protocolNumber" | "company" | "position" | "stack" | "location" | "createdAt";
@@ -20,7 +20,7 @@ export type Entry = {
   city: string | null;
   country: string | null;
   notes: string | null;
-  status: ApplicationStatus;
+  stage: string | null;
   createdAt: Date;
   timezone: string | null;
   tags: string[];
@@ -99,7 +99,7 @@ export async function listEntries(
       city: applications.city,
       country: applications.country,
       notes: applications.notes,
-      status: applications.status,
+      stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       tags: tagsAgg,
@@ -146,6 +146,9 @@ export type NewEntryInput = {
  * the backstop if they still collide.
  */
 export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{ id: string }> {
+  // Every entry starts in the first column of the board.
+  const stageId = await getFirstStageId(scope);
+
   const nextNumber = sql<number>`(
     select coalesce(max(a.protocol_number), 0) + 1
       from ${applications} a
@@ -165,6 +168,7 @@ export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{
       notes: input.notes,
       jobDescription: input.jobDescription,
       timezone: input.timezone ?? null,
+      stageId,
       ...(input.createdAt ? { createdAt: input.createdAt, updatedAt: input.createdAt } : {}),
     })
     .returning({ id: applications.id });
@@ -183,7 +187,8 @@ export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{
 
   await db.insert(statusEvents).values({
     applicationId: row.id,
-    status: "applied",
+    stageId,
+    stageName: DEFAULT_STAGES[0]?.name ?? "Application sent",
     ...(input.createdAt ? { occurredAt: input.createdAt } : {}),
   });
 
@@ -211,7 +216,7 @@ export async function getEntry(scope: Scope, id: string): Promise<Entry | null> 
       city: applications.city,
       country: applications.country,
       notes: applications.notes,
-      status: applications.status,
+      stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       tags: tagsAgg,
