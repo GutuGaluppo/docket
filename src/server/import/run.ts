@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createEntry } from "@/server/db/queries/applications";
+import { createEntries } from "@/server/db/queries/applications";
 import type { Scope } from "@/server/db/queries/scope";
 import { parseImport } from "@/lib/import/parse";
 
@@ -32,9 +32,9 @@ export async function runImport(
     return { ok: false, error: reason ? `Nothing to import: ${reason}.` : "Nothing to import." };
   }
 
-  // Sequential on purpose: protocol numbers are per user and must not interleave.
-  for (const row of rows) {
-    await createEntry(scope, {
+  const { inserted } = await createEntries(
+    scope,
+    rows.map((row) => ({
       company: row.company,
       website: row.website || null,
       position: row.position,
@@ -44,8 +44,8 @@ export async function runImport(
       jobDescription: row.jobDescription || null,
       tags: row.tags,
       ...(row.createdAt ? { createdAt: row.createdAt } : {}),
-    });
-  }
+    })),
+  );
 
-  return { ok: true, imported: rows.length, skipped };
+  return { ok: true, imported: inserted, skipped };
 }

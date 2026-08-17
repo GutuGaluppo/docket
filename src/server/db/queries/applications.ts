@@ -195,6 +195,76 @@ export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{
   return row;
 }
 
+/**
+ * Bulk insert for the import path.
+ *
+ * Creating entries one at a time cost four round trips each — resolve the first
+ * stage, insert the row, insert the tags, insert the event — so a 500-row CSV
+ * meant two thousand requests to Neon and a serverless function that ran out of
+ * time long before it ran out of rows. This does it in four, regardless of size.
+ *
+ * Protocol numbers are read once and assigned in sequence. A concurrent stamp
+ * could in theory claim the same number; the unique index on
+ * (user_id, protocol_number) is what stops it becoming a duplicate.
+ */
+export async function createEntries(
+  scope: Scope,
+  rows: readonly NewEntryInput[],
+): Promise<{ inserted: number }> {
+  if (rows.length === 0) return { inserted: 0 };
+
+  const stageId = await getFirstStageId(scope);
+  const stageName = DEFAULT_STAGES[0]?.name ?? "Application sent";
+
+  const [highest] = await db
+    .select({ max: sql<number>`coalesce(max(${applications.protocolNumber}), 0)` })
+    .from(applications)
+    .where(scope.owned(applications.userId));
+  const startAt = Number(highest?.max ?? 0);
+
+  const inserted = await db
+    .insert(applications)
+    .values(
+      rows.map((input, index) => ({
+        userId: scope.userId,
+        protocolNumber: startAt + index + 1,
+        company: input.company,
+        website: input.website,
+        position: input.position,
+        city: input.city,
+        country: input.country,
+        notes: input.notes,
+        jobDescription: input.jobDescription,
+        timezone: input.timezone ?? null,
+        stageId,
+        ...(input.createdAt ? { createdAt: input.createdAt, updatedAt: input.createdAt } : {}),
+      })),
+    )
+    .returning({ id: applications.id });
+
+  const tagValues = inserted.flatMap((row, index) =>
+    (rows[index]?.tags ?? []).map((tag, position) => ({
+      applicationId: row.id,
+      tag,
+      position,
+    })),
+  );
+  if (tagValues.length > 0) {
+    await db.insert(applicationTags).values(tagValues).onConflictDoNothing();
+  }
+
+  await db.insert(statusEvents).values(
+    inserted.map((row, index) => ({
+      applicationId: row.id,
+      stageId,
+      stageName,
+      ...(rows[index]?.createdAt ? { occurredAt: rows[index]!.createdAt } : {}),
+    })),
+  );
+
+  return { inserted: inserted.length };
+}
+
 /** Returns false when the id does not belong to the scope — never throws a leak. */
 export async function deleteEntry(scope: Scope, id: string): Promise<boolean> {
   const deleted = await db
