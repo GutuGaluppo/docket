@@ -22,7 +22,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${archivo.variable} ${courierPrime.variable}`}>
-      <body className="min-h-screen bg-paper text-ink antialiased">{children}</body>
+      {/*
+        Extensions edit <body> before React hydrates — Grammarly stamps
+        data-gr-ext-installed on it, password managers do the same. The flag
+        only covers this element's own attributes, one level deep, so a real
+        mismatch inside a component still reports.
+      */}
+      <body suppressHydrationWarning className="min-h-screen bg-paper text-ink antialiased">
+        {children}
+      </body>
     </html>
   );
 }
