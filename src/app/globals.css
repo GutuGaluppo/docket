@@ -1,0 +1,341 @@
+@import "tailwindcss";
+
+/* Design tokens ported verbatim from the prototype (controle-de-vagas.jsx).
+   The palette is the product's identity — do not add a second accent colour. */
+@theme {
+  --color-paper: #dbd9d1;
+  --color-card: #f7f6f2;
+  --color-sheet: #fffefb;
+  --color-ink: #191a17;
+  --color-muted: #6d6a61;
+  --color-faint: #a8a59b;
+  --color-rule: #c2bfb5;
+  --color-stamp: #6c3fa8;
+  --color-flag: #a93726;
+
+  --font-ui: var(--font-archivo), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-courier-prime), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --shadow-paper: 3px 3px 0 rgb(25 26 23 / 0.07);
+  --shadow-popover: 3px 3px 0 rgb(25 26 23 / 0.12);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /* Uppercase mono label used for section eyebrows and column headers. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* The signature element: the violet double-outlined stamp. */
+  .stamp {
+    display: inline-block;
+    border: 2px solid var(--color-stamp);
+    border-radius: 3px;
+    padding: 5px 10px 4px;
+    color: var(--color-stamp);
+    font-family: var(--font-mono);
+    text-align: center;
+    box-shadow: inset 0 0 0 1px var(--color-stamp);
+    opacity: 0.92;
+  }
+  .stamp-date {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .stamp-time {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    border-top: 1px solid var(--color-stamp);
+    margin-top: 3px;
+    padding-top: 3px;
+  }
+
+  /* Underlined text input, as in the prototype form. */
+  .field-input {
+    font-family: var(--font-ui);
+    font-size: 15px;
+    color: var(--color-ink);
+    background: transparent;
+    border: 0;
+    border-bottom: 1.5px solid var(--color-rule);
+    padding: 7px 2px;
+    border-radius: 0;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+  .field-input::placeholder {
+    color: var(--color-faint);
+  }
+  .field-input:focus {
+    outline: none;
+    border-bottom-color: var(--color-stamp);
+  }
+  .field-input:focus-visible {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 3px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-muted);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .field-textarea {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-ink);
+    background: var(--color-sheet);
+    border: 1px solid var(--color-rule);
+    border-radius: 2px;
+    padding: 12px;
+    width: 100%;
+    resize: vertical;
+    transition: border-color 0.15s ease;
+  }
+  .field-textarea::placeholder {
+    color: var(--color-faint);
+  }
+  .field-textarea:focus {
+    outline: none;
+    border-color: var(--color-stamp);
+  }
+
+  .btn {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--color-stamp);
+    color: #fff;
+    border: 0;
+    border-radius: 2px;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: transform 0.12s ease;
+  }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+  }
+
+  .btn-quiet {
+    background: transparent;
+    color: var(--color-stamp);
+    border: 1px solid rgb(108 63 168 / 0.4);
+    padding: 9px 14px;
+    font-size: 12px;
+  }
+
+  /* Mono text button with a violet underline — used for inline actions. */
+  .link-quiet {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+    border-bottom: 1px solid var(--color-stamp);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: rgb(108 63 168 / 0.08);
+    color: var(--color-stamp);
+    border: 1px solid rgb(108 63 168 / 0.28);
+    border-radius: 2px;
+    padding: 5px 6px 5px 10px;
+  }
+  .pill-manual {
+    background: transparent;
+    border-style: dashed;
+  }
+  .pill button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 2px;
+    opacity: 0.65;
+  }
+  .pill button:hover {
+    opacity: 1;
+    background: rgb(108 63 168 / 0.16);
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgb(108 63 168 / 0.08);
+    color: var(--color-stamp);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  /* The register. Below 760px each row becomes a card — the same breakpoint
+     and the same `data-label` trick the prototype used. */
+  .docket-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .docket-table th {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 1.5px solid var(--color-ink);
+    white-space: nowrap;
+  }
+  .docket-table th a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .docket-table td {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--color-rule);
+    font-size: 15px;
+    vertical-align: top;
+    background: var(--color-card);
+  }
+  .docket-table tbody tr:hover td {
+    background: var(--color-sheet);
+  }
+  .docket-cell-number {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-muted);
+    width: 58px;
+    padding-top: 19px;
+  }
+  .docket-row-with-note td {
+    border-bottom: 0;
+  }
+  .docket-note td {
+    padding: 0 12px 16px 82px;
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-rule);
+    font-size: 14px;
+    color: var(--color-muted);
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 760px) {
+    .docket-table thead {
+      display: none;
+    }
+    .docket-table,
+    .docket-table tbody,
+    .docket-table tr,
+    .docket-table td {
+      display: block;
+      width: 100%;
+    }
+    .docket-table tr {
+      border: 1px solid var(--color-rule);
+      border-radius: 3px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .docket-table td {
+      border-bottom: 1px solid var(--color-rule);
+      padding: 12px 14px;
+    }
+    .docket-table td:last-child {
+      border-bottom: 0;
+    }
+    .docket-table td::before {
+      content: attr(data-label);
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 5px;
+    }
+    .docket-cell-number {
+      width: auto;
+      padding-top: 12px;
+    }
+    .docket-row-with-note {
+      margin-bottom: 0;
+      border-bottom: 0;
+      border-radius: 3px 3px 0 0;
+    }
+    .docket-note {
+      display: block;
+      border: 1px solid var(--color-rule);
+      border-top: 0;
+      border-radius: 0 0 3px 3px;
+      margin-bottom: 14px;
+    }
+    .docket-note td {
+      display: block;
+      padding: 12px 14px;
+      border-bottom: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  .btn:hover {
+    transform: none;
+  }
+}
