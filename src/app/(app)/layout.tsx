@@ -19,6 +19,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/docket" className="text-ink">
               Docket
             </Link>
+            <Link href="/board">Board</Link>
+            <Link href="/calendar">Calendar</Link>
             <Link href="/docket/import">Import</Link>
             <Link href="/settings">Settings</Link>
           </div>
