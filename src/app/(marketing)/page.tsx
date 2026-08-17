@@ -131,11 +131,16 @@ export default async function LandingPage() {
             </span>
           </div>
 
-          {/* An example entry, exactly as the app renders it. */}
+          {/*
+            An example entry, exactly as the app renders it. The company is
+            invented, like the ones in the screenshots below: this page is
+            public, and a real third-party name here would imply an association
+            that does not exist.
+          */}
           <div className="mt-2 flex items-start gap-4 rounded-[3px] border border-rule bg-card p-4 shadow-paper">
             <span className="font-mono text-xs text-muted">001</span>
             <div className="flex-1">
-              <p className="font-semibold">Loudly</p>
+              <p className="font-semibold">Meridian Labs</p>
               <p className="text-sm text-muted">Senior Frontend Developer</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {["React", "TypeScript", "Next.js"].map((tag) => (
