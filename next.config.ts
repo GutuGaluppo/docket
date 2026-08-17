@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
        * is not: a header is stronger than robots.txt, which only asks.
        */
       {
-        source: "/:path(docket|board|calendar|settings|sign-in|monitoring)/:rest*",
+        source: "/:path(docket|board|calendar|analytics|settings|sign-in|monitoring)/:rest*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {

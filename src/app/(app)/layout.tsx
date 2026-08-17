@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
             <Link href="/board">Board</Link>
             <Link href="/calendar">Calendar</Link>
+            <Link href="/analytics">Analytics</Link>
             <Link href="/docket/import">Import</Link>
             <Link href="/settings">Settings</Link>
           </div>
