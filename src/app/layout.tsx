@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { archivo, courierPrime } from "@/lib/fonts";
+import { archivo, jetbrainsMono } from "@/lib/fonts";
 
 import "./globals.css";
 
@@ -16,12 +16,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#DBD9D1",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#DBD9D1" },
+    { media: "(prefers-color-scheme: dark)", color: "#191813" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${courierPrime.variable}`}>
+    <html lang="en" className={`${archivo.variable} ${jetbrainsMono.variable}`}>
       {/*
         Extensions edit <body> before React hydrates — Grammarly stamps
         data-gr-ext-installed on it, password managers do the same. The flag

@@ -31,7 +31,7 @@ export function CompanyLogo({ company, website }: { company: string; website?: s
   const mark = exhausted ? (
     <span
       aria-hidden="true"
-      className="flex size-7 shrink-0 items-center justify-center rounded-[3px] border border-stamp/30 bg-stamp/8 p-0.5 font-mono text-[13px] font-bold text-stamp"
+      className="flex size-7 shrink-0 items-center justify-center rounded-[3px] border border-stamp-edge bg-stamp-wash p-0.5 font-mono text-[13px] font-bold text-stamp"
     >
       {initial}
     </span>

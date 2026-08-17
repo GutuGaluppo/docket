@@ -15,7 +15,7 @@ export default async function SettingsPage() {
     <>
       <header className="border-b-2 border-ink pb-4">
         <p className="eyebrow mb-1.5 text-stamp">Account</p>
-        <h1 className="text-[clamp(28px,5vw,42px)] leading-none font-bold tracking-[-0.02em]">
+        <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
           Settings
         </h1>
       </header>
