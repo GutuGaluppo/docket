@@ -8,7 +8,7 @@ export type CsvEntry = {
   tags: string[];
   city: string | null;
   country: string | null;
-  status: string;
+  stage: string | null;
   createdAt: Date;
   timezone: string | null;
   notes: string | null;
@@ -22,7 +22,7 @@ const HEADER = [
   "Stack",
   "City",
   "Country",
-  "Status",
+  "Stage",
   "Stamped at",
   "Notes",
 ] as const;
@@ -41,7 +41,7 @@ export function toCsv(entries: readonly CsvEntry[]): string {
       entry.tags.join(" · "),
       entry.city ?? "",
       entry.country ?? "",
-      entry.status,
+      entry.stage ?? "",
       `${stamp.date} ${stamp.time}`,
       entry.notes ?? "",
     ].map(cell);
