@@ -13,6 +13,7 @@ export function ImportForm() {
 
   return (
     <form
+      suppressHydrationWarning
       className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper"
       onSubmit={(event) => {
         event.preventDefault();
@@ -40,7 +41,10 @@ export function ImportForm() {
         className="w-full border-b-[1.5px] border-rule py-2 font-mono text-[13px] file:mr-3 file:cursor-pointer file:rounded-[2px] file:border file:border-stamp/40 file:bg-transparent file:px-3 file:py-1.5 file:font-mono file:text-[11px] file:tracking-[0.08em] file:text-stamp file:uppercase"
       />
 
-      <div className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4">
+      <div
+        className="mt-5 flex flex-wrap items-center gap-3.5 border-t border-dashed border-rule pt-4"
+        suppressHydrationWarning
+      >
         <button type="submit" className="btn" disabled={pending} suppressHydrationWarning>
           {pending ? "Reading…" : "Import"}
         </button>

@@ -3,7 +3,13 @@
 import { useState, useTransition } from "react";
 
 import type { BoardColumn, Stage } from "@/server/db/queries/board";
-import { addStage, editStage, moveApplication, removeStage, reorderStage } from "@/server/actions/board";
+import {
+  addStage,
+  editStage,
+  moveApplication,
+  removeStage,
+  reorderStage,
+} from "@/server/actions/board";
 import { BoardCard } from "./BoardCard";
 
 export function Board({ columns }: { columns: BoardColumn[] }) {
@@ -56,14 +62,13 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
               onDragLeave={() => setDragOver((id) => (id === column.stage.id ? null : id))}
               onDrop={(event) => onDrop(column.stage.id, event)}
               className={`flex w-[264px] flex-none flex-col gap-3 rounded-[3px] border p-3 transition-colors ${
-                dragOver === column.stage.id
-                  ? "border-stamp bg-stamp-wash"
-                  : "border-rule bg-card"
+                dragOver === column.stage.id ? "border-stamp bg-stamp-wash" : "border-rule bg-card"
               }`}
             >
               <header className="flex flex-col gap-2 border-b border-rule pb-2">
                 {editing === column.stage.id ? (
                   <form
+                    suppressHydrationWarning
                     className="flex items-center gap-2"
                     onSubmit={(event) => {
                       event.preventDefault();
@@ -88,22 +93,31 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.08em] text-faint uppercase">
+                <div
+                  className="flex items-center gap-2 font-mono text-[10px] tracking-[0.08em] text-faint uppercase"
+                  suppressHydrationWarning
+                >
                   <button
                     type="button"
                     disabled={pending || index === 0}
-                    onClick={() => run(() => reorderStage({ id: column.stage.id, direction: "left" }))}
+                    onClick={() =>
+                      run(() => reorderStage({ id: column.stage.id, direction: "left" }))
+                    }
                     className="cursor-pointer hover:text-stamp disabled:cursor-default disabled:opacity-40"
                     aria-label={`Move ${column.stage.name} left`}
+                    suppressHydrationWarning
                   >
                     ←
                   </button>
                   <button
                     type="button"
                     disabled={pending || index === columns.length - 1}
-                    onClick={() => run(() => reorderStage({ id: column.stage.id, direction: "right" }))}
+                    onClick={() =>
+                      run(() => reorderStage({ id: column.stage.id, direction: "right" }))
+                    }
                     className="cursor-pointer hover:text-stamp disabled:cursor-default disabled:opacity-40"
                     aria-label={`Move ${column.stage.name} right`}
+                    suppressHydrationWarning
                   >
                     →
                   </button>
@@ -115,6 +129,7 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                       setEditing(column.stage.id);
                     }}
                     className="cursor-pointer hover:text-stamp"
+                    suppressHydrationWarning
                   >
                     Rename
                   </button>
@@ -124,6 +139,7 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                       disabled={pending}
                       onClick={() => run(() => removeStage({ id: column.stage.id }))}
                       className="cursor-pointer hover:text-flag"
+                      suppressHydrationWarning
                     >
                       Remove
                     </button>
@@ -151,7 +167,10 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
           ))}
 
           {/* Adding a column sits at the end of the row, where a new one lands. */}
-          <div className="flex w-[220px] flex-none flex-col gap-2 rounded-[3px] border border-dashed border-rule p-3">
+          <div
+            suppressHydrationWarning
+            className="flex w-[220px] flex-none flex-col gap-2 rounded-[3px] border border-dashed border-rule p-3"
+          >
             {adding ? (
               <form
                 onSubmit={(event) => {
@@ -161,6 +180,7 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                   setAdding(false);
                   run(() => addStage({ name }));
                 }}
+                suppressHydrationWarning
                 className="flex flex-col gap-2"
               >
                 <input
@@ -182,6 +202,7 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                 onClick={() => setAdding(true)}
                 disabled={pending}
                 className="cursor-pointer py-6 font-mono text-[11px] tracking-[0.08em] text-muted uppercase hover:text-stamp"
+                suppressHydrationWarning
               >
                 + Add column
               </button>

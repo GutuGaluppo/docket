@@ -29,13 +29,14 @@ export function SubscribeCard({ feedUrl }: { feedUrl: string }) {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" suppressHydrationWarning>
         <code className="min-w-0 flex-1 overflow-x-auto rounded-[2px] border border-rule bg-sheet px-3 py-2 font-mono text-xs whitespace-nowrap text-ink">
           {feedUrl}
         </code>
         <button
           type="button"
           className="btn btn-quiet"
+          suppressHydrationWarning
           onClick={async () => {
             await navigator.clipboard.writeText(feedUrl);
             setCopied(true);
@@ -66,10 +67,14 @@ export function SubscribeCard({ feedUrl }: { feedUrl: string }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-dashed border-rule pt-4">
+      <div
+        className="flex flex-wrap items-center gap-3 border-t border-dashed border-rule pt-4"
+        suppressHydrationWarning
+      >
         <button
           type="button"
           className="link-quiet"
+          suppressHydrationWarning
           disabled={pending}
           onClick={() =>
             startTransition(async () => {

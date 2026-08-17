@@ -55,6 +55,7 @@ export function ThemeToggle() {
       role="radiogroup"
       aria-label="Colour theme"
       className="inline-flex items-center rounded-[2px] border border-rule"
+      suppressHydrationWarning
     >
       {OPTIONS.map((option) => {
         const active = choice === option.value;

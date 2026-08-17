@@ -65,7 +65,7 @@ export function CityField({
   }
 
   return (
-    <div ref={block} className="field relative">
+    <div ref={block} className="field relative" suppressHydrationWarning>
       <label className="field-label" htmlFor={id}>
         City
         {country && <span className="font-mono font-bold normal-case text-stamp">→ {country}</span>}
