@@ -28,7 +28,7 @@ export function ImportForm() {
 
       <label className="field-label mb-2" htmlFor="file">
         File
-        <span className="font-mono text-[11px] font-normal normal-case text-faint">
+        <span className="field-hint">
           .json or .csv, up to 2 MB
         </span>
       </label>

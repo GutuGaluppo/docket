@@ -22,7 +22,7 @@ export function DeleteAccountForm() {
       }}
       className="mt-4 flex flex-wrap items-end gap-3"
     >
-      <div className="flex flex-col gap-1.5">
+      <div className="field">
         <label className="field-label" htmlFor="confirm">
           Type DELETE to confirm
         </label>

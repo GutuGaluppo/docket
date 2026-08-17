@@ -98,6 +98,18 @@
     outline-offset: 3px;
   }
 
+  /* A field is one label plus one control. Grid cells stretch to the tallest
+     in their row, so the pair is pinned to the bottom: a label that wraps onto
+     a second line grows upward and every control in the row stays on one line.
+     It also keeps the city autocomplete anchored, since `top-full` then
+     resolves to the input's bottom edge rather than the cell's. */
+  .field {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
   .field-label {
     font-size: 11px;
     letter-spacing: 0.1em;
@@ -106,7 +118,20 @@
     color: var(--color-muted);
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    /* The hint moves to its own line as a unit instead of breaking mid-phrase. */
+    flex-wrap: wrap;
+    column-gap: 8px;
+    row-gap: 2px;
+  }
+
+  /* Secondary text inside a label: "optional — brings the logo". */
+  .field-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--color-faint);
   }
 
   .field-textarea {

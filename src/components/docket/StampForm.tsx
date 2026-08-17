@@ -114,32 +114,35 @@ export function StampForm() {
     <form
       onSubmit={onSubmit}
       noValidate
+      data-form-type="other"
       className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper"
     >
       <p className="eyebrow mb-4 text-muted">New entry</p>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        <div className="flex flex-col gap-1.5">
+        <div className="field">
           <label className="field-label" htmlFor="company">
             Company
           </label>
           <input
             id="company"
+            data-form-type="other"
             className="field-input"
             placeholder="e.g. Loudly"
             {...register("company")}
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
+        <div className="field">
           <label className="field-label" htmlFor="website">
             Website
-            <span className="font-mono text-[11px] font-normal normal-case text-faint">
+            <span className="field-hint">
               optional — brings the logo
             </span>
           </label>
           <input
             id="website"
+            data-form-type="other"
             className="field-input"
             autoComplete="off"
             placeholder={company ? probableDomain(company) : "e.g. loudly.com"}
@@ -156,27 +159,29 @@ export function StampForm() {
           }}
         />
 
-        <div className="flex flex-col gap-1.5">
+        <div className="field">
           <label className="field-label" htmlFor="position">
             Position
           </label>
           <input
             id="position"
+            data-form-type="other"
             className="field-input"
             placeholder="e.g. Senior Frontend Developer"
             {...register("position")}
           />
         </div>
 
-        <div className="col-span-full flex flex-col gap-1.5">
+        <div className="field col-span-full">
           <label className="field-label" htmlFor="jobDescription">
             Job description
-            <span className="font-mono text-[11px] font-normal normal-case text-faint">
+            <span className="field-hint">
               paste the ad — technologies become tags on their own
             </span>
           </label>
           <textarea
             id="jobDescription"
+            data-form-type="other"
             rows={5}
             className="field-textarea min-h-[108px]"
             placeholder="Paste the requirements here. e.g. You'll work with React, TypeScript and Next.js, with a Node.js/GraphQL backend deployed on AWS…"
@@ -218,6 +223,7 @@ export function StampForm() {
 
           <div className="mt-3">
             <input
+              data-form-type="other"
               className="field-input"
               value={manualDraft}
               onChange={(event) => setManualDraft(event.target.value)}
@@ -233,15 +239,16 @@ export function StampForm() {
           </div>
         </div>
 
-        <div className="col-span-full flex flex-col gap-1.5">
+        <div className="field col-span-full">
           <label className="field-label" htmlFor="notes">
             Notes
-            <span className="font-mono text-[11px] font-normal normal-case text-faint">
+            <span className="field-hint">
               optional — recruiter, salary range, link to the ad
             </span>
           </label>
           <textarea
             id="notes"
+            data-form-type="other"
             rows={2}
             className="field-textarea min-h-[62px]"
             placeholder="e.g. referred by Pedro · 70–80k · technical interview on Friday"
