@@ -65,13 +65,14 @@ export function CityField({
   }
 
   return (
-    <div ref={block} className="relative flex flex-col gap-1.5">
+    <div ref={block} className="field relative">
       <label className="field-label" htmlFor={id}>
         City
         {country && <span className="font-mono font-bold normal-case text-stamp">→ {country}</span>}
       </label>
       <input
         id={id}
+        data-form-type="other"
         className="field-input"
         role="combobox"
         aria-expanded={open && suggestions.length > 0}
