@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 
 import { auth } from "@/auth";
 import { DeleteAccountForm } from "@/components/settings/DeleteAccountForm";
+import { FollowUpSettings } from "@/components/settings/FollowUpSettings";
 import { getEntryCounts } from "@/server/db/queries/applications";
+import { getFollowUpDays } from "@/server/db/queries/reminders";
 import { requireScope } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const scope = await requireScope();
-  const [session, counts] = await Promise.all([auth(), getEntryCounts(scope)]);
+  const [session, counts, followUpDays] = await Promise.all([
+    auth(),
+    getEntryCounts(scope),
+    getFollowUpDays(scope),
+  ]);
 
   return (
     <>
@@ -28,6 +34,16 @@ export default async function SettingsPage() {
           <dt className="text-muted">Entries on file</dt>
           <dd>{String(counts.total).padStart(3, "0")}</dd>
         </dl>
+      </section>
+
+      <section className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper">
+        <p className="eyebrow mb-2 text-muted">Follow-ups</p>
+        <p className="max-w-[60ch] text-sm text-muted">
+          One email when an application has sat in the first column without an answer for longer
+          than you chose. One reminder per application, never a second — this is a list, not a
+          campaign.
+        </p>
+        <FollowUpSettings current={followUpDays} />
       </section>
 
       <section className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper">
