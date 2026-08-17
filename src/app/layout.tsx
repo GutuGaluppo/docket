@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
+import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 import { archivo, jetbrainsMono } from "@/lib/fonts";
 
 import "./globals.css";
@@ -24,7 +25,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${archivo.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      // The init script stamps data-theme here before React runs, so the
+      // attribute legitimately differs from what the server sent.
+      suppressHydrationWarning
+      className={`${archivo.variable} ${jetbrainsMono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       {/*
         Extensions edit <body> before React hydrates — Grammarly stamps
         data-gr-ext-installed on it, password managers do the same. The flag

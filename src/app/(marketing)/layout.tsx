@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 /**
  * The public shell. Server-rendered, no client JavaScript of its own — the
  * hero detector and the scroll reveal are the only interactive things on the
@@ -13,12 +15,15 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <Link href="/" className="text-xl font-bold tracking-[-0.02em] no-underline">
             Docket
           </Link>
-          <Link
-            href="/sign-in"
-            className="font-mono text-[11px] tracking-[0.1em] text-muted uppercase"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link
+              href="/sign-in"
+              className="font-mono text-[11px] tracking-[0.1em] text-muted uppercase"
+            >
+              Sign in
+            </Link>
+          </div>
         </nav>
 
         <main>{children}</main>
