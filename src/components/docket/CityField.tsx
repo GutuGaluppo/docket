@@ -73,6 +73,7 @@ export function CityField({
       <input
         id={id}
         data-form-type="other"
+        suppressHydrationWarning
         className="field-input"
         role="combobox"
         aria-expanded={open && suggestions.length > 0}
