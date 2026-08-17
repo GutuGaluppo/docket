@@ -30,6 +30,11 @@ export const users = pgTable("users", {
    * the credential. Null until the user first asks for the feed.
    */
   calendarToken: text("calendar_token").unique(),
+  /**
+   * Days of silence before a follow-up nudge. Null means off, which is the
+   * default: nobody is opted into email they did not ask for.
+   */
+  followUpDays: integer("follow_up_days"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -69,6 +74,26 @@ export const verificationTokens = pgTable(
     expires: timestamp("expires", { mode: "date", withTimezone: true }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
+/**
+ * One row per nudge actually sent. This is what makes the cron idempotent — it
+ * can run twice in a minute, or be retried after a crash, without emailing
+ * anyone twice — and it is also the "only once per application" rule: a weekly
+ * reminder about the same dead application is nagging, not a service.
+ */
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("reminders_application_idx").on(t.applicationId)],
 );
 
 /* ---------------------------------------------------------------------------
@@ -308,6 +333,7 @@ export const schema = {
   statusEvents,
   stages,
   interviews,
+  reminders,
   usersRelations,
   stagesRelations,
   interviewsRelations,
