@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 
-import { auth } from "@/auth";
 import { HeroDetector } from "@/components/marketing/HeroDetector";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Track } from "@/components/analytics/Track";
@@ -79,9 +78,19 @@ const FAQ = [
 ];
 
 export default async function LandingPage() {
-  const [session, headerList] = await Promise.all([auth(), headers()]);
+  const headerList = await headers();
   const price = priceFor(headerList.get("x-vercel-ip-country"));
-  const signedIn = Boolean(session?.user?.id);
+
+  /*
+    The landing does not read the session.
+    
+    It used to, only to relabel the call to action for someone already signed
+    in — which cost a database round trip on the one page that has to be fast
+    for people who have no account at all. The sign-in screen already redirects
+    an authenticated visitor to their docket, so the plain link reaches the same
+    place with one hop that nobody sees, and the page stops depending on who is
+    asking.
+  */
 
   /**
    * SoftwareApplication, with no aggregateRating. The brief is explicit: a
@@ -126,8 +135,8 @@ export default async function LandingPage() {
           </p>
 
           <div className="flex flex-wrap items-center gap-4">
-            <Link href={signedIn ? "/docket" : "/sign-in"} className="btn no-underline">
-              {signedIn ? "Open your docket" : CTA}
+            <Link href="/sign-in" className="btn no-underline">
+              {CTA}
             </Link>
             <span className="font-mono text-xs text-muted">
               Free forever for the register itself.
@@ -310,11 +319,8 @@ export default async function LandingPage() {
             works today.
           </p>
 
-          <Link
-            href={signedIn ? "/docket" : "/sign-in"}
-            className="btn mt-8 inline-block no-underline"
-          >
-            {signedIn ? "Open your docket" : CTA}
+          <Link href="/sign-in" className="btn mt-8 inline-block no-underline">
+            {CTA}
           </Link>
         </section>
       </Reveal>
@@ -340,11 +346,8 @@ export default async function LandingPage() {
             ))}
           </div>
 
-          <Link
-            href={signedIn ? "/docket" : "/sign-in"}
-            className="btn mt-10 inline-block no-underline"
-          >
-            {signedIn ? "Open your docket" : CTA}
+          <Link href="/sign-in" className="btn mt-10 inline-block no-underline">
+            {CTA}
           </Link>
         </section>
       </Reveal>
