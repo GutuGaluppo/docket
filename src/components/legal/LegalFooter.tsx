@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ContactModal } from "@/components/legal/ContactModal";
 import { IMPRESSUM_READY, OPERATOR } from "@/lib/legal";
 
 /**
@@ -8,7 +9,13 @@ import { IMPRESSUM_READY, OPERATOR } from "@/lib/legal";
  * link appears only once the address exists; linking to a 404 would be worse
  * than not linking at all.
  */
-export function LegalFooter({ compact = false }: { compact?: boolean }) {
+export function LegalFooter({
+  compact = false,
+  contactEmail = "",
+}: {
+  compact?: boolean;
+  contactEmail?: string;
+}) {
   return (
     <footer
       className={`flex flex-col gap-3 border-t border-rule pt-5 ${compact ? "mt-12" : "mt-16"}`}
@@ -17,7 +24,7 @@ export function LegalFooter({ compact = false }: { compact?: boolean }) {
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
         {IMPRESSUM_READY && <Link href="/impressum">Impressum</Link>}
-        <a href={`mailto:${OPERATOR.email}`}>Contact</a>
+        <ContactModal initialEmail={contactEmail} />
       </nav>
       <p className="font-mono text-[11px] text-faint">
         Docket — operated by {OPERATOR.name}, {OPERATOR.city}, {OPERATOR.country}.

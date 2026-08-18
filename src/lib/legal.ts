@@ -38,7 +38,11 @@ export const LAST_UPDATED = "18 August 2026";
 export const SUBPROCESSORS = [
   { name: "Vercel", role: "Hosting and delivery of the application", where: "Frankfurt, Germany" },
   { name: "Neon", role: "The database where the register is stored", where: "Frankfurt, Germany" },
-  { name: "Resend", role: "Sending the follow-up emails you asked for", where: "Ireland" },
+  {
+    name: "Resend",
+    role: "Sending follow-up and contact-form emails",
+    where: "Ireland",
+  },
   {
     name: "PostHog",
     role: "Counting the six product events listed above",
