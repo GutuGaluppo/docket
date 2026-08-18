@@ -169,7 +169,9 @@ export default async function LandingPage() {
       <Reveal>
         <section className="border-b border-rule py-14">
           <p className="eyebrow mb-2 text-stamp">How it works</p>
-          <h2 className="mb-8 text-2xl font-bold tracking-[-0.015em]">Three steps, in this order</h2>
+          <h2 className="mb-8 text-2xl font-bold tracking-[-0.015em]">
+            Three steps, in this order
+          </h2>
           <ol className="grid list-none gap-8 p-0 sm:grid-cols-3">
             {STEPS.map((step, index) => (
               <li key={step.title} className="flex flex-col gap-2">
@@ -231,9 +233,15 @@ export default async function LandingPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ["Export any time", "CSV and complete JSON, on every plan, without asking anyone."],
-              ["Delete in one click", "Account deletion removes every entry, tag and event immediately."],
+              [
+                "Delete in one click",
+                "Account deletion removes every entry, tag and event immediately.",
+              ],
               ["Never sold", "No data brokers, no ad networks, no training sets."],
-              ["Never sent to recruiters", "Nobody sees your register but you. There is no other side to this product."],
+              [
+                "Never sent to recruiters",
+                "Nobody sees your register but you. There is no other side to this product.",
+              ],
             ].map(([title, body]) => (
               <div key={title} className="flex flex-col gap-1.5 border-t border-rule pt-3">
                 <h3 className="text-sm font-semibold">{title}</h3>
@@ -297,7 +305,7 @@ export default async function LandingPage() {
               Price adjusted for {price.adjustedFor}. Same product, same features.
             </p>
           )}
-          <p className="mt-2 max-w-[62ch] font-mono text-xs text-faint">
+          <p className="mt-2 max-w-[62ch] font-mono text-xs text-muted">
             Pro is not on sale yet — checkout is still being built. Everything listed under Free
             works today.
           </p>

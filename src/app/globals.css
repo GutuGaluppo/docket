@@ -14,9 +14,19 @@
   --paper-100: #f7f6f2;
   --paper-200: #dbd9d1;
   --paper-300: #c2bfb5;
-  /* Both are text colours, so both must clear 4.5:1 on the surfaces they
-     sit on. The prototype's #A8A59B and #6D6A61 did not — #6D6A61 on paper
-     was 3.82:1. Darkened to the minimum that passes. */
+  /* Both are text colours. --paper-600 clears 4.5:1 everywhere it is used;
+     --paper-400 does not, and the difference is the ground.
+
+       on --raised  (#fffefb)   4.98:1   passes
+       on --surface (#f7f6f2)   4.64:1   passes
+       on --ground  (#dbd9d1)   3.55:1   FAILS
+
+     So --faint is the faintest text that stays readable *on a card*, and it is
+     not licensed for use directly on the page ground — Lighthouse caught two
+     places doing exactly that. Darkening it far enough to pass on the ground
+     would need #605d55, which is --paper-600 in all but name and collapses the
+     two steps into one. Keeping the step and stating its ceiling is the honest
+     trade; use --muted on the ground. */
   --paper-400: #726f66;
   --paper-600: #5f5c54;
   --paper-900: #191a17;

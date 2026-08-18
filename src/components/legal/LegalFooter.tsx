@@ -26,7 +26,7 @@ export function LegalFooter({
         {IMPRESSUM_READY && <Link href="/impressum">Impressum</Link>}
         <ContactModal initialEmail={contactEmail} />
       </nav>
-      <p className="font-mono text-[11px] text-faint">
+      <p className="font-mono text-[11px] text-muted">
         Docket — operated by {OPERATOR.name}, {OPERATOR.city}, {OPERATOR.country}.
       </p>
     </footer>
