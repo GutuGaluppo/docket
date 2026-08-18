@@ -1,0 +1,6 @@
+# The lockfile is versioned on purpose: it is what makes a build reproducible,
+# and dropping it means two machines can resolve different trees from the same
+# package.json. It is also machine-written and never read by a human, so it is
+# marked generated — collapsed in review, excluded from language statistics, and
+# kept out of `git diff` unless asked for explicitly with `--text`.
+pnpm-lock.yaml linguist-generated=true -diff
