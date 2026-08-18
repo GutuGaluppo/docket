@@ -34,6 +34,17 @@ export const deleteEntrySchema = z.object({
   id: z.string().min(1),
 });
 
+/**
+ * A correction is the same shape as an entry plus the id of the row it fixes.
+ * Deliberately no protocol number and no date: those are the two things the
+ * register asserts, and neither is a field anyone gets to send.
+ */
+export const editEntrySchema = entryInputSchema.extend({
+  id: z.string().min(1),
+});
+
+export type EditEntryValues = z.output<typeof editEntrySchema>;
+
 export const SORT_FIELDS = [
   "protocolNumber",
   "company",

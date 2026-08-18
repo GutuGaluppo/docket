@@ -107,7 +107,12 @@ export function EntriesTable({
                 </span>
               </td>
               <td data-label="Actions">
-                <DeleteEntryButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
+                <span className="flex flex-wrap items-center gap-3">
+                  <Link href={`/docket/${entry.id}/edit`} className="link-quiet">
+                    Edit
+                  </Link>
+                  <DeleteEntryButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
+                </span>
               </td>
             </tr>
             {entry.notes && (

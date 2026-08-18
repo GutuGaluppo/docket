@@ -98,6 +98,31 @@ fires inside `javascript`.
 than replacing it. That is what stops a re-paste from silently resurrecting a
 tag the user removed.
 
+All of it — the textarea, the derivation and the tag editor — lives in
+`src/components/docket/StackField.tsx`, shared by the form that creates an entry
+and the one that corrects it. Correction needs one extra step, `seedStack`:
+because the list is derived from the description on every keystroke, a saved
+entry arrives as the _difference_ between what its description produces and what
+was actually stored. A tag typed by hand is not in the text and returns as
+`manual`; a tag the text produces but the entry does not keep was removed on
+purpose and returns as `dismissed`. Without both, opening an entry to fix a typo
+would quietly rewrite its tags.
+
+### Correcting an entry
+
+`/docket/[id]/edit` — `src/components/docket/EditEntryForm.tsx` — edits
+everything except two fields: the protocol number and the stamp. That is not an
+omission. A register whose dates can be moved is a notebook, and the claim this
+product makes is that the moment an application was sent is on the record. The
+stage is left alone as well: moving an application through the funnel is the
+board's job and writes a status event when it happens, so correcting a company
+name must not look like progress.
+
+`updateEntry` replaces the tag rows wholesale rather than reconciling them — the
+list is never long, and rewriting it costs fewer round trips than diffing it. A
+row that belongs to someone else and a row that no longer exists both come back
+as the same "not found", because the reply must not tell a stranger which.
+
 ### `entryInputSchema` runs twice
 
 The same schema is applied at two points, for two different reasons:

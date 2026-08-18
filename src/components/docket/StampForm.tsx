@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -9,7 +9,7 @@ import { FreeTextCaution } from "@/components/FreeTextCaution";
 import { CityField } from "./CityField";
 import { DraftReview } from "./DraftReview";
 import { PostingImport } from "./PostingImport";
-import { detectStack, resolveTags } from "@/lib/stack-detector";
+import { StackField, useStack } from "./StackField";
 import { probableDomain } from "@/lib/company/domain";
 import type { PostingDraft, PostingField, PostingSource } from "@/lib/posting/types";
 import { stampApplication } from "@/server/actions/entries";
@@ -35,11 +35,9 @@ export function StampForm() {
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState("");
 
-  // Detector output is derived from the pasted ad; these two hold the edits on
-  // top of it, so re-pasting never silently resurrects a tag the user removed.
-  const [dismissed, setDismissed] = useState<string[]>([]);
-  const [manual, setManual] = useState<string[]>([]);
-  const [manualDraft, setManualDraft] = useState("");
+  // The description and the tags derived from it live in one hook, shared with
+  // the correction form so a tag rule is never written twice.
+  const stack = useStack({ description: "", tags: [] });
 
   /*
     Phase B — the review step.
@@ -71,19 +69,13 @@ export function StampForm() {
   });
 
   const company = watch("company") ?? "";
-  const jobDescription = watch("jobDescription") ?? "";
   const city = watch("city") ?? "";
   const country = watch("country") ?? "";
 
-  const detected = useMemo(() => detectStack(jobDescription), [jobDescription]);
-  const tags = useMemo(
-    () => resolveTags({ detected, dismissed, manual }),
-    [detected, dismissed, manual],
-  );
-
   useEffect(() => {
-    setValue("tags", tags, { shouldValidate: false });
-  }, [tags, setValue]);
+    setValue("tags", stack.tags, { shouldValidate: false });
+    setValue("jobDescription", stack.description, { shouldValidate: false });
+  }, [stack.tags, stack.description, setValue]);
 
   function clearMarks() {
     setMarked([]);
@@ -117,40 +109,15 @@ export function StampForm() {
    */
   function applyDraft(draft: PostingDraft) {
     for (const field of draft.filled) {
-      setValue(field, draft.values[field], { shouldValidate: false });
+      if (field === "jobDescription") stack.setDescription(draft.values.jobDescription);
+      else setValue(field, draft.values[field], { shouldValidate: false });
     }
     // The tag edits belonged to the previous description.
-    setDismissed([]);
-    setManual([]);
-    setManualDraft("");
+    stack.setDismissed([]);
+    stack.setManual([]);
     setServerError("");
     setMarked(draft.filled);
     setSources(draft.sources);
-  }
-
-  function addTag(value: string) {
-    const clean = value.trim();
-    if (!clean) return;
-    setDismissed((list) => list.filter((t) => t.toLowerCase() !== clean.toLowerCase()));
-    if (!tags.some((t) => t.toLowerCase() === clean.toLowerCase())) {
-      setManual((list) => [...list, clean]);
-    }
-    setManualDraft("");
-  }
-
-  function removeTag(value: string) {
-    setManual((list) => list.filter((t) => t !== value));
-    if (detected.includes(value)) {
-      setDismissed((list) => (list.includes(value) ? list : [...list, value]));
-    }
-  }
-
-  function clearStack() {
-    setValue("jobDescription", "");
-    setDismissed([]);
-    setManual([]);
-    setManualDraft("");
-    unmark("jobDescription");
   }
 
   const onSubmit = handleSubmit((values) => {
@@ -158,14 +125,15 @@ export function StampForm() {
     startTransition(async () => {
       const result = await stampApplication({
         ...values,
-        tags,
+        tags: stack.tags,
+        jobDescription: stack.description,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       if (result.ok) {
         reset(EMPTY);
-        setDismissed([]);
-        setManual([]);
-        setManualDraft("");
+        stack.setDescription("");
+        stack.setDismissed([]);
+        stack.setManual([]);
         clearMarks();
       } else {
         setServerError(result.error);
@@ -265,78 +233,14 @@ export function StampForm() {
           />
         </div>
 
-        <div className="field col-span-full" suppressHydrationWarning>
-          <label className="field-label" htmlFor="jobDescription">
-            Job description
-            {marked.includes("jobDescription") ? (
-              <span className="mark-flag">check</span>
-            ) : (
-              <span className="field-hint">
-                paste the ad — technologies become tags on their own
-              </span>
-            )}
-          </label>
-          <textarea
-            id="jobDescription"
-            data-form-type="other"
-            suppressHydrationWarning
-            rows={5}
-            placeholder="Paste the requirements here. e.g. You'll work with React, TypeScript and Next.js, with a Node.js/GraphQL backend deployed on AWS…"
-            {...markable("jobDescription", "field-textarea min-h-[108px]")}
-          />
-          <FreeTextCaution />
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="eyebrow text-stamp">
-              {tags.length === 0
-                ? "No technology recognised"
-                : `${tags.length} ${tags.length === 1 ? "technology" : "technologies"} on the tag`}
-            </span>
-            {(jobDescription || manual.length > 0) && (
-              <button type="button" className="link-quiet" onClick={clearStack}>
-                Clear
-              </button>
-            )}
-          </div>
-
-          <div className="flex min-h-10 flex-wrap items-center gap-2 border-b-[1.5px] border-rule px-0.5 pt-2 pb-2.5">
-            {tags.length === 0 ? (
-              <span className="text-sm text-faint">
-                Paste the description above, or write the technology in the field below.
-              </span>
-            ) : (
-              tags.map((tag) => (
-                <span
-                  key={tag}
-                  className={`pill${manual.includes(tag) && !detected.includes(tag) ? " pill-manual" : ""}`}
-                >
-                  {tag}
-                  <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove ${tag}`}>
-                    ✕
-                  </button>
-                </span>
-              ))
-            )}
-          </div>
-
-          <div className="mt-3" suppressHydrationWarning>
-            <input
-              data-form-type="other"
-              suppressHydrationWarning
-              className="field-input"
-              value={manualDraft}
-              onChange={(event) => setManualDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addTag(manualDraft);
-                }
-              }}
-              aria-label="Add a technology by hand"
-              placeholder="Missing one? Type it and press Enter"
-            />
-          </div>
-        </div>
+        <StackField
+          stack={stack}
+          marked={marked.includes("jobDescription")}
+          onDescriptionChange={() => unmark("jobDescription")}
+          label={
+            marked.includes("jobDescription") ? <span className="mark-flag">check</span> : undefined
+          }
+        />
 
         <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="notes">
