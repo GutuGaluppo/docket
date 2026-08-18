@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ContactModal } from "@/components/legal/ContactModal";
 import { IMPRESSUM_READY, OPERATOR } from "@/lib/legal";
+import { APP_VERSION, BUILD_REF } from "@/lib/version";
 
 /**
  * §5 DDG wants the provider identification reachable from every page, so this
@@ -11,9 +12,11 @@ import { IMPRESSUM_READY, OPERATOR } from "@/lib/legal";
  */
 export function LegalFooter({
   compact = false,
+  contactName = "",
   contactEmail = "",
 }: {
   compact?: boolean;
+  contactName?: string;
   contactEmail?: string;
 }) {
   return (
@@ -24,10 +27,18 @@ export function LegalFooter({
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>
         {IMPRESSUM_READY && <Link href="/impressum">Impressum</Link>}
-        <ContactModal initialEmail={contactEmail} />
+        <ContactModal initialName={contactName} initialEmail={contactEmail} />
       </nav>
       <p className="font-mono text-[11px] text-muted">
-        Docket — operated by {OPERATOR.name}, {OPERATOR.city}, {OPERATOR.country}.
+        Docket{" "}
+        {/*
+          The build reference rides along as a title rather than as text. On the
+          page it would be noise for everyone; on hover it answers the one
+          question the version cannot — whether the deployment in front of you is
+          the one you just shipped.
+        */}
+        <span title={BUILD_REF ? `build ${BUILD_REF}` : undefined}>v{APP_VERSION}</span> — operated
+        by {OPERATOR.name}, {OPERATOR.city}, {OPERATOR.country}.
       </p>
     </footer>
   );
