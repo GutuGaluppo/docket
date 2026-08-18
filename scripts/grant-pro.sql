@@ -12,7 +12,13 @@
 -- That request arrives through the contact form and is settled with this file —
 -- no coupon code exists to leak, and nothing has to be built for it.
 --
--- Usage:
+-- This is the version for the Neon SQL editor, or for a machine that has psql.
+-- On a machine that does not, scripts/grant-pro.mjs does the same thing through
+-- the `pg` driver the migration step already installs:
+--
+--   node scripts/grant-pro.mjs you@example.com
+--
+-- Usage here:
 --   psql "$DATABASE_URL_UNPOOLED" -v email="'you@example.com'" -f scripts/grant-pro.sql
 --
 -- To take it back, run scripts/grant-pro.sql with plan 'free' edited in, or
