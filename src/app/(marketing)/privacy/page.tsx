@@ -62,14 +62,20 @@ export default function PrivacyPage() {
           advertising, tracking or profiling cookie, so there is no consent banner to click.
         </p>
         <p>
-          <b className="text-ink">Counting.</b> Six things are counted so we can tell whether the
+          <b className="text-ink">Contact.</b> When you use the contact form, we receive the email
+          address, subject and message you provide so we can read and reply to your request.
+        </p>
+        <p>
+          <b className="text-ink">Counting.</b> Seven things are counted so we can tell whether the
           site works: the landing page being opened, the detector on it being used, the pricing
-          section being reached, the sign-in screen being opened, an account being created, and a
-          first entry being stamped. Nothing is stored on your device to do it — no cookie, no local
-          storage — so an anonymous visit leaves no identifier behind and cannot be joined to a
-          later one. Your IP is dropped before the measurement is sent. What you paste into the
-          detector on the landing page is never transmitted: only the fact that the box was used.
-          The last two counts are tied to your account, because by then you have one.
+          section being reached, the sign-in screen being opened, an account being created, a first
+          entry being stamped, and a paid feature being reached on the free plan. Nothing is stored
+          on your device to do it — no cookie, no local storage — so an anonymous visit leaves no
+          identifier behind and cannot be joined to a later one. Your IP is dropped before the
+          measurement is sent. What you paste into the detector on the landing page is never
+          transmitted: only the fact that the box was used. Two of the counts — an account being
+          created and a first entry being stamped — are tied to your account, because by then you
+          have one.
         </p>
       </Clause>
 
@@ -78,7 +84,8 @@ export default function PrivacyPage() {
           Running your account and keeping the register is the performance of our agreement with you
           — art. 6(1)(b) GDPR. Keeping the service secure and preventing abuse rests on our
           legitimate interest, art. 6(1)(f). Follow-up emails are sent only after you switch them
-          on, and switching them off stops them.
+          on, and switching them off stops them. Contact messages are processed to answer the
+          request you chose to send, under our legitimate interest in providing support.
         </p>
       </Clause>
 
@@ -136,6 +143,11 @@ export default function PrivacyPage() {
           For as long as you keep the account. Delete it and every entry, tag, stage event,
           interview and reminder goes with it, immediately and without a recovery window. Backups
           held by our database provider roll off on their own schedule.
+        </p>
+        <p>
+          A message sent through the contact form is the exception: it arrives as an email and stays
+          in the inbox that answers it, so deleting your account does not delete it. Ask and it is
+          removed.
         </p>
       </Clause>
 
