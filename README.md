@@ -68,11 +68,15 @@ src/
     db/schema.ts    Drizzle schema
     db/queries/     the only place that touches a table
     import/         shared import runner
+    posting/        the guarded fetch and the pipeline that drives it
   lib/
     stack-detector/ dictionary + algorithm (pure, tested)
     cities/         city → country base (pure, tested)
     import/         CSV and JSON parsing (pure, tested)
+    posting/        pasted link → draft entry (pure, tested)
     validation/     Zod schemas shared by form and action
+docs/
+  entry-form.md     the entry form and the link pipeline, kept true by a test
 ```
 
 ## The rules that hold this up
@@ -84,6 +88,11 @@ src/
 2. **Server actions check the session first, then Zod, then touch the database.** No exceptions:
    an action is a public endpoint regardless of which button called it.
 3. **No `any`.** `strict` and `noUncheckedIndexedAccess` are on.
+4. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
+   describes the form and the four phases of the link pipeline;
+   `src/lib/posting/documentation.test.ts` reads the source and fails when a module, board, field,
+   refused host or phase in the code is missing from the document, or when the document points at a
+   file that no longer exists. Change the form, change the document, same commit.
 
 ### Testing isolation for real
 
