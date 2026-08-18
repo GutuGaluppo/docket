@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createEntry, deleteEntry } from "@/server/db/queries/applications";
+import { createEntry, deleteEntry, updateEntry } from "@/server/db/queries/applications";
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
 import { captureForUser } from "@/server/analytics/capture";
 import { EVENTS } from "@/lib/analytics/events";
-import { deleteEntrySchema, entryInputSchema } from "@/lib/validation/entry";
+import { deleteEntrySchema, editEntrySchema, entryInputSchema } from "@/lib/validation/entry";
 
 export type ActionResult =
   { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
@@ -56,6 +56,47 @@ export async function stampApplication(input: unknown): Promise<ActionResult> {
   }
 
   revalidatePath("/docket");
+  return { ok: true };
+}
+
+export async function editEntry(input: unknown): Promise<ActionResult> {
+  let scope;
+  try {
+    scope = await requireScope();
+  } catch (error) {
+    if (error instanceof UnauthenticatedError) return { ok: false, error: "Sign in first." };
+    throw error;
+  }
+
+  const parsed = editEntrySchema.safeParse(input);
+  if (!parsed.success) {
+    const flat = parsed.error.flatten();
+    return {
+      ok: false,
+      error: flat.formErrors[0] ?? "Some fields need attention.",
+      fieldErrors: flat.fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const values = parsed.data;
+  const updated = await updateEntry(scope, values.id, {
+    company: values.company,
+    website: values.website || null,
+    position: values.position,
+    city: values.city || null,
+    country: values.country || null,
+    notes: values.notes || null,
+    jobDescription: values.jobDescription || null,
+    timezone: values.timezone || null,
+    tags: values.tags,
+  });
+
+  // Same reply for a row that is gone and a row that belongs to someone else:
+  // the answer must not tell a stranger which.
+  if (!updated) return { ok: false, error: "Entry not found." };
+
+  revalidatePath("/docket");
+  revalidatePath("/board");
   return { ok: true };
 }
 

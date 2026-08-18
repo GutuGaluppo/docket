@@ -99,7 +99,9 @@ export async function listEntries(
       city: applications.city,
       country: applications.country,
       notes: applications.notes,
-      stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+      stage: sql<
+        string | null
+      >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       tags: tagsAgg,
@@ -280,7 +282,10 @@ export async function deleteEntry(scope: Scope, id: string): Promise<boolean> {
   return deleted.length > 0;
 }
 
-export async function getEntry(scope: Scope, id: string): Promise<Entry | null> {
+/** What the edit screen needs on top of a listing row. */
+export type EntryDetail = Entry & { jobDescription: string | null };
+
+export async function getEntry(scope: Scope, id: string): Promise<EntryDetail | null> {
   const [row] = await db
     .select({
       id: applications.id,
@@ -291,9 +296,12 @@ export async function getEntry(scope: Scope, id: string): Promise<Entry | null> 
       city: applications.city,
       country: applications.country,
       notes: applications.notes,
-      stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+      stage: sql<
+        string | null
+      >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
+      jobDescription: applications.jobDescription,
       tags: tagsAgg,
     })
     .from(applications)
@@ -301,4 +309,57 @@ export async function getEntry(scope: Scope, id: string): Promise<Entry | null> 
     .limit(1);
 
   return row ?? null;
+}
+
+export type EditEntryInput = Omit<NewEntryInput, "createdAt">;
+
+/**
+ * Corrects an entry. The number and the stamp are not among the fields.
+ *
+ * A docket is a numbered register, and what makes it one is that the number and
+ * the moment are not up for revision — an entry whose date can be moved is a
+ * note, not a record. Everything a person can get wrong about a job they applied
+ * to is editable; the two facts the register itself asserts are not.
+ *
+ * The stage is left alone too: moving an application through the funnel is the
+ * board's job, and it writes a status event when it happens. Correcting a
+ * company name should not look like progress.
+ */
+export async function updateEntry(
+  scope: Scope,
+  id: string,
+  input: EditEntryInput,
+): Promise<boolean> {
+  const [row] = await db
+    .update(applications)
+    .set({
+      company: input.company,
+      website: input.website,
+      position: input.position,
+      city: input.city,
+      country: input.country,
+      notes: input.notes,
+      jobDescription: input.jobDescription,
+      updatedAt: new Date(),
+    })
+    .where(scope.owned(applications.userId, eq(applications.id, id)))
+    .returning({ id: applications.id });
+
+  if (!row) return false;
+
+  // Tags are positional and replaced wholesale: reconciling them one by one
+  // would cost more round trips than rewriting a list that is never long.
+  // scope-exempt: the id came back from the scoped update directly above.
+  await db.delete(applicationTags).where(eq(applicationTags.applicationId, row.id));
+  if (input.tags.length > 0) {
+    await db.insert(applicationTags).values(
+      input.tags.map((tag, position) => ({
+        applicationId: row.id,
+        tag,
+        position,
+      })),
+    );
+  }
+
+  return true;
 }
