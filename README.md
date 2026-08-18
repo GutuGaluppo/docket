@@ -88,7 +88,13 @@ docs/
 2. **Server actions check the session first, then Zod, then touch the database.** No exceptions:
    an action is a public endpoint regardless of which button called it.
 3. **No `any`.** `strict` and `noUncheckedIndexedAccess` are on.
-4. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
+4. **The version in the footer is bumped by hand, on releases worth marking.**
+   `package.json` is the single source and `src/lib/version.ts` is the only reader, so
+   `pnpm version minor` moves the number everywhere it appears. It marks a release someone
+   decided was worth marking — a judgement no commit count can make — so it does not move on
+   every merge. Hovering it shows the commit the running deployment was built from, which is the
+   separate question of whether a fix is live yet.
+5. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
    describes the form and the four phases of the link pipeline;
    `src/lib/posting/documentation.test.ts` reads the source and fails when a module, board, field,
    refused host or phase in the code is missing from the document, or when the document points at a
