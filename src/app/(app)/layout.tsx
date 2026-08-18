@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LegalFooter } from "@/components/legal/LegalFooter";
 
 /**
  * The real authorisation gate. Middleware only looks at a cookie; this is
@@ -41,6 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </nav>
         {children}
+        <LegalFooter compact />
       </div>
     </div>
   );
