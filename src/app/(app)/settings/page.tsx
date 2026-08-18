@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { DeleteAccountForm } from "@/components/settings/DeleteAccountForm";
 import { FollowUpSettings } from "@/components/settings/FollowUpSettings";
+import { ProNotice } from "@/components/billing/ProNotice";
 import { getEntryCounts } from "@/server/db/queries/applications";
+import { canUseFollowUps } from "@/server/billing/limits";
 import { getFollowUpDays } from "@/server/db/queries/reminders";
 import { requireScope } from "@/server/auth/session";
 
@@ -11,10 +13,11 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const scope = await requireScope();
-  const [session, counts, followUpDays] = await Promise.all([
+  const [session, counts, followUpDays, followUps] = await Promise.all([
     auth(),
     getEntryCounts(scope),
     getFollowUpDays(scope),
+    canUseFollowUps(scope),
   ]);
 
   return (
@@ -43,7 +46,20 @@ export default async function SettingsPage() {
           than you chose. One reminder per application, never a second — this is a list, not a
           campaign.
         </p>
-        <FollowUpSettings current={followUpDays} />
+        {followUps.allowed ? (
+          <FollowUpSettings current={followUpDays} />
+        ) : (
+          <div className="mt-4">
+            <ProNotice limit="follow-ups" title="Follow-up reminders are a Pro feature">
+              <p>
+                Everything the reminder would read is already in the register — what is behind Pro
+                is the sending. Nothing scheduled is lost: an application that goes quiet stays
+                visible in the first column of the board, which is where the reminder would have
+                pointed anyway.
+              </p>
+            </ProNotice>
+          </div>
+        )}
       </section>
 
       <section className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper">

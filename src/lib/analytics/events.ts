@@ -1,5 +1,5 @@
 /**
- * The six events the funnel is made of, and nothing else.
+ * The events the funnel is made of, and nothing else.
  *
  * Section 3 of the brief names them and names the funnel they answer:
  * hero → detector used → account created → first entry stamped. Keeping the
@@ -14,9 +14,20 @@ export const EVENTS = {
   signupStarted: "signup_started",
   signupCompleted: "signup_completed",
   firstEntryStamped: "first_entry_stamped",
+  proLimitReached: "pro_limit_reached",
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];
+
+/**
+ * The capped features, named. A closed set, because it is the only thing any
+ * event is allowed to carry — see `config.ts` on why properties are limited to
+ * enumerations rather than forbidden outright.
+ */
+export const PRO_LIMITS = ["stages", "follow-ups", "analytics"] as const;
+export type ProLimit = (typeof PRO_LIMITS)[number];
+
+export type EventProps = { [EVENTS.proLimitReached]: { limit: ProLimit } };
 
 /** Fired from the browser, without an account and without an identity. */
 export const ANONYMOUS_EVENTS: readonly EventName[] = [
@@ -24,6 +35,7 @@ export const ANONYMOUS_EVENTS: readonly EventName[] = [
   EVENTS.heroDetectorUsed,
   EVENTS.pricingView,
   EVENTS.signupStarted,
+  EVENTS.proLimitReached,
 ];
 
 /** Fired from the server, for a user who is already known. */

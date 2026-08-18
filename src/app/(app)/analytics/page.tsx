@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ProNotice } from "@/components/billing/ProNotice";
 import { RateTable } from "@/components/analytics/RateTable";
+import { canUseAnalytics } from "@/server/billing/limits";
 import { requireScope } from "@/server/auth/session";
 import {
   getFunnel,
@@ -28,6 +30,26 @@ function Figure({ value, label, hint }: { value: string; label: string; hint?: s
 
 export default async function AnalyticsPage() {
   const scope = await requireScope();
+
+  // Checked before the queries run: the numbers are the feature, so computing
+  // them and then declining to show them would be the wrong order.
+  const verdict = await canUseAnalytics(scope);
+  if (!verdict.allowed) {
+    return (
+      <main className="mx-auto max-w-[900px] px-5 py-10">
+        <p className="eyebrow mb-2 text-stamp">Analytics</p>
+        <h1 className="mb-6 text-3xl font-bold tracking-[-0.02em]">Response rates</h1>
+        <ProNotice limit="analytics" title="Response rates are a Pro feature">
+          <p>
+            The register keeps counting either way — every entry, stage change and interview is
+            still recorded. What is behind Pro is the reading of it: response rate by technology, by
+            country, and the time from stamp to first answer.
+          </p>
+        </ProNotice>
+      </main>
+    );
+  }
+
   const [summary, byTag, byCountry, funnel] = await Promise.all([
     getSummary(scope),
     getRateByTag(scope),

@@ -1,4 +1,4 @@
-import type { EventName } from "./events";
+import type { EventName, EventProps } from "./events";
 
 /**
  * How PostHog is allowed to behave here.
@@ -68,11 +68,21 @@ export function analyticsSettings(host: string = POSTHOG_EU_HOST): AnalyticsSett
 }
 
 /**
- * Events carry no properties. The one signal that could carry text — what was
- * pasted into the hero detector — is exactly the one the landing promises never
- * leaves the browser, so "a real ad was pasted" is encoded in whether the event
- * fires at all rather than in anything it carries.
+ * A property may only ever be a value from a closed set declared in this
+ * codebase — never anything a person typed, and never anything derived from it.
+ *
+ * The rule used to be "no properties at all", which was the same guarantee
+ * stated less precisely. What it is really protecting is that nothing a visitor
+ * wrote is transmitted: the pasted job advert is the obvious case, and the
+ * landing promises under the field that it never leaves the browser, so
+ * `hero_detector_used` still carries nothing and encodes "a real advert" in
+ * whether it fires. Naming which of three known caps someone reached carries no
+ * personal data by construction — the value cannot be anything but one of three
+ * literals — and without it the count cannot answer the question it exists for.
  */
-export function eventPayload(name: EventName): { event: EventName } {
-  return { event: name };
+export function eventPayload<N extends EventName>(
+  name: N,
+  props?: N extends keyof EventProps ? EventProps[N] : never,
+): { event: EventName; properties?: Record<string, string> } {
+  return props ? { event: name, properties: { ...props } } : { event: name };
 }

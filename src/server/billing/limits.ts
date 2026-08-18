@@ -16,17 +16,25 @@ export type Plan = "free" | "pro" | "teams";
  * free plan and the checks below are already in the call path, so switching
  * them on is a data change rather than a code change.
  */
+type Entitlements = {
+  entries: number;
+  stages: number;
+  followUpReminders: boolean;
+  analytics: boolean;
+};
+
 export const LIMITS = {
   free: {
     /** Section 7: registering applications is never capped — the habit comes first. */
     entries: Infinity,
     /** Applied, interviewing, closed. Custom columns are what Pro sells. */
     stages: 3,
-    interviewReminders: false,
+    followUpReminders: false,
+    analytics: false,
   },
-  pro: { entries: Infinity, stages: Infinity, interviewReminders: true },
-  teams: { entries: Infinity, stages: Infinity, interviewReminders: true },
-} as const satisfies Record<Plan, { entries: number; stages: number; interviewReminders: boolean }>;
+  pro: { entries: Infinity, stages: Infinity, followUpReminders: true, analytics: true },
+  teams: { entries: Infinity, stages: Infinity, followUpReminders: true, analytics: true },
+} as const satisfies Record<Plan, Entitlements>;
 
 export async function getPlan(scope: Scope): Promise<Plan> {
   const [row] = await db
@@ -45,12 +53,22 @@ export async function getPlan(scope: Scope): Promise<Plan> {
 export type LimitVerdict = { allowed: true } | { allowed: false; reason: string };
 
 /**
- * Phase 4 has not shipped, so there is no way to buy Pro and no way to leave
- * the free plan. Enforcing the free caps now would gate a feature behind a
- * purchase that cannot be made. The checks stay in the call path and switch on
- * with this flag the day checkout works.
+ * On, deliberately, before checkout exists.
+ *
+ * The argument for waiting was that a cap with nothing to buy is a dead end.
+ * The argument for not waiting is stronger: every account that arrives while
+ * the caps are off forms the habit with the whole product, and taking a feature
+ * away from someone who already uses it is worse than never having offered it.
+ * The dead end is answered by saying so plainly — see ProNotice, which states
+ * that Pro is not on sale yet and points at the contact form.
+ *
+ * That turns each cap into the measurement phase 4 is missing: today there is
+ * no evidence anyone wants Pro, and `pro_limit_reached` is how that evidence
+ * arrives before a week is spent on a payment adapter.
+ *
+ * Setting this to false restores the everything-is-free behaviour in one line.
  */
-export const BILLING_ENABLED = false;
+export const BILLING_ENABLED = true;
 
 export async function canAddStage(scope: Scope, current: number): Promise<LimitVerdict> {
   if (!BILLING_ENABLED) return { allowed: true };
@@ -61,5 +79,36 @@ export async function canAddStage(scope: Scope, current: number): Promise<LimitV
   return {
     allowed: false,
     reason: `The free plan keeps ${max} columns. Pro adds as many as your process needs.`,
+  };
+}
+
+/**
+ * Whether the scheduled job may contact this account at all.
+ *
+ * Section 7 puts follow-up reminders on the paid side, and an email is the one
+ * capped feature that acts on its own — a column nobody may add is inert, but a
+ * reminder sent to someone who is not entitled to it cannot be taken back. The
+ * cron therefore filters on the plan in SQL as well; this function is what the
+ * settings screen and its action agree with.
+ */
+export async function canUseFollowUps(scope: Scope): Promise<LimitVerdict> {
+  if (!BILLING_ENABLED) return { allowed: true };
+
+  const plan = await getPlan(scope);
+  if (LIMITS[plan].followUpReminders) return { allowed: true };
+  return {
+    allowed: false,
+    reason: "Follow-up reminders are a Pro feature.",
+  };
+}
+
+export async function canUseAnalytics(scope: Scope): Promise<LimitVerdict> {
+  if (!BILLING_ENABLED) return { allowed: true };
+
+  const plan = await getPlan(scope);
+  if (LIMITS[plan].analytics) return { allowed: true };
+  return {
+    allowed: false,
+    reason: "Response-rate analytics is a Pro feature.",
   };
 }

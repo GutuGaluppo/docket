@@ -3,7 +3,8 @@ import "server-only";
 import { asc, eq, inArray, isNotNull, notExists, or, isNull, and, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { applications, reminders, stages, users } from "@/server/db/schema";
+import { applications, reminders, stages, subscriptions, users } from "@/server/db/schema";
+import { BILLING_ENABLED } from "@/server/billing/limits";
 import type { Scope } from "./scope";
 
 export type DueApplication = {
@@ -30,6 +31,13 @@ export type DueBatch = {
  * Runs from the cron with no session, so it is scoped by the job's own
  * predicates rather than by a Scope — every row it returns is joined back to
  * the user it belongs to, and the caller only ever emails that address.
+ *
+ * The plan is filtered here, in SQL, rather than trusted to the settings screen.
+ * Reminders are the one capped feature that acts on its own: a column nobody may
+ * add is inert until someone clicks, but an email sent to an account that is not
+ * entitled to it has already happened by the time anyone notices. A row whose
+ * `follow_up_days` was set while the caps were off stays in the database and
+ * simply stops matching.
  */
 export async function findDueReminders(limit = 500): Promise<DueBatch[]> {
   // scope-exempt: a scheduled job has no session; ownership travels on the join.
@@ -48,10 +56,24 @@ export async function findDueReminders(limit = 500): Promise<DueBatch[]> {
     })
     .from(applications)
     .innerJoin(users, eq(applications.userId, users.id))
+    // Left join, not inner: an account that never had a subscription has no row
+    // at all, and an inner join would drop it even with the caps switched off.
+    // A missing row fails the plan filter below on its own, which is the free
+    // plan by another name.
+    .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
     .leftJoin(stages, eq(applications.stageId, stages.id))
     .where(
       and(
         isNotNull(users.followUpDays),
+        // Section 7 puts reminders on the paid side. Left out entirely when the
+        // caps are off, so flipping BILLING_ENABLED restores the old behaviour
+        // here too rather than leaving the cron on a stale rule.
+        ...(BILLING_ENABLED
+          ? [
+              inArray(subscriptions.plan, ["pro", "teams"] as const),
+              inArray(subscriptions.status, ["active", "trialing"] as const),
+            ]
+          : []),
         // Still untouched: either in a start column, or never assigned one.
         or(eq(stages.kind, "start"), isNull(applications.stageId)),
         sql`${applications.createdAt} <= now() - make_interval(days => ${users.followUpDays})`,
