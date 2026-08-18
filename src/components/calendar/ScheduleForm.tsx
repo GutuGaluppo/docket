@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { FreeTextCaution } from "@/components/FreeTextCaution";
 import { scheduleInterview } from "@/server/actions/interviews";
 import { DURATION_CHOICES, REMINDER_CHOICES, reminderLabel } from "@/lib/validation/interview";
 
@@ -185,6 +186,7 @@ export function ScheduleForm({ applications }: { applications: readonly Applicat
             className="field-textarea min-h-[62px]"
             placeholder="e.g. with Ana from the platform team · take-home reviewed"
           />
+          <FreeTextCaution />
         </div>
       </div>
 

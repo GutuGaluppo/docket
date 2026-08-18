@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { entryInputSchema, type EntryInput, type EntryValues } from "@/lib/validation/entry";
+import { FreeTextCaution } from "@/components/FreeTextCaution";
 import { CityField } from "./CityField";
 import { detectStack, resolveTags } from "@/lib/stack-detector";
 import { probableDomain } from "@/lib/company/domain";
@@ -200,6 +201,7 @@ export function StampForm() {
             placeholder="Paste the requirements here. e.g. You'll work with React, TypeScript and Next.js, with a Node.js/GraphQL backend deployed on AWS…"
             {...register("jobDescription")}
           />
+          <FreeTextCaution />
 
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="eyebrow text-stamp">
@@ -267,6 +269,7 @@ export function StampForm() {
             placeholder="e.g. referred by Pedro · 70–80k · technical interview on Friday"
             {...register("notes")}
           />
+          <FreeTextCaution />
         </div>
       </div>
 
