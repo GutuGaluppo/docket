@@ -61,7 +61,24 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const client = new Client({ connectionString });
+/**
+ * Neon's string carries `sslmode=require`, which pg today treats as
+ * `verify-full` — the certificate is checked. pg v9 will read it the way libpq
+ * does instead, where `require` encrypts but verifies nothing, and the
+ * connection would quietly get weaker on an upgrade nobody connected to this
+ * file. Asking for `verify-full` by name pins what already happens.
+ */
+function pinCertificateChecking(url) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("sslmode", "verify-full");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+const client = new Client({ connectionString: pinCertificateChecking(connectionString) });
 
 try {
   await client.connect();
