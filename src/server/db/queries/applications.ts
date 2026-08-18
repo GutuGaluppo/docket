@@ -145,7 +145,10 @@ export type NewEntryInput = {
  * cannot claim the same Nº; the unique index on (user_id, protocol_number) is
  * the backstop if they still collide.
  */
-export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{ id: string }> {
+export async function createEntry(
+  scope: Scope,
+  input: NewEntryInput,
+): Promise<{ id: string; protocolNumber: number }> {
   // Every entry starts in the first column of the board.
   const stageId = await getFirstStageId(scope);
 
@@ -171,7 +174,9 @@ export async function createEntry(scope: Scope, input: NewEntryInput): Promise<{
       stageId,
       ...(input.createdAt ? { createdAt: input.createdAt, updatedAt: input.createdAt } : {}),
     })
-    .returning({ id: applications.id });
+    // The number comes back because Nº 1 is how the caller knows this was the
+    // account's first entry, without a second query for it.
+    .returning({ id: applications.id, protocolNumber: applications.protocolNumber });
 
   if (!row) throw new Error("Insert returned no row");
 

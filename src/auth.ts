@@ -4,6 +4,8 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 
+import { EVENTS } from "@/lib/analytics/events";
+import { captureForUser } from "@/server/analytics/capture";
 import { db } from "@/server/db";
 import { accounts, sessions, users, verificationTokens } from "@/server/db/schema";
 
@@ -44,6 +46,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session({ session, user }) {
       session.user.id = user.id;
       return session;
+    },
+  },
+  events: {
+    /**
+     * Fires once per account, the moment the adapter writes the row — which is
+     * the only unambiguous definition of "signed up". A sign-in event would
+     * count every returning visit instead.
+     */
+    async createUser({ user }) {
+      if (user.id) await captureForUser(user.id, EVENTS.signupCompleted);
     },
   },
 });

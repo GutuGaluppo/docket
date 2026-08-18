@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { capture } from "@/lib/analytics/client";
+import { EVENTS } from "@/lib/analytics/events";
 import { detectStack } from "@/lib/stack-detector";
 
 /**
@@ -9,8 +11,13 @@ import { detectStack } from "@/lib/stack-detector";
  *
  * This is the only interactive thing on the landing page, and it is the product
  * itself: the same pure module the app uses, running in the visitor's browser.
- * No account, no network call, no telemetry — paste any real job ad and it
- * answers before you finish reading this sentence.
+ * No account and no network call — paste any real job ad and it answers before
+ * you finish reading this sentence.
+ *
+ * One event is emitted the first time the box holds something other than the
+ * sample, and it carries no properties. The pasted text never leaves the
+ * browser, which is what the label under the field promises; whether a real ad
+ * was pasted is encoded in the firing condition, not in anything transmitted.
  */
 const SAMPLE = `Senior Frontend Engineer (m/f/d) — Berlin, hybrid
 
@@ -20,9 +27,20 @@ AWS behind Kubernetes. We test with Playwright and care about accessibility.
 
 Nice to have: experience with PostgreSQL, and an eye for CI/CD.`;
 
+/** Long enough that idle typing does not read as a pasted advert. */
+const REAL_AD = 120;
+
 export function HeroDetector() {
   const [text, setText] = useState(SAMPLE);
   const tags = useMemo(() => detectStack(text), [text]);
+  const reported = useRef(false);
+
+  useEffect(() => {
+    if (reported.current) return;
+    if (text === SAMPLE || text.trim().length < REAL_AD) return;
+    reported.current = true;
+    capture(EVENTS.heroDetectorUsed);
+  }, [text]);
 
   return (
     <div className="flex flex-col gap-3" suppressHydrationWarning>

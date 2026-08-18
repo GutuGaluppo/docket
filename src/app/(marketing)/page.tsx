@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { HeroDetector } from "@/components/marketing/HeroDetector";
 import { Reveal } from "@/components/marketing/Reveal";
+import { Track } from "@/components/analytics/Track";
+import { EVENTS } from "@/lib/analytics/events";
 import { priceFor } from "@/lib/pricing";
 
 const DESCRIPTION =
@@ -104,6 +106,7 @@ export default async function LandingPage() {
 
   return (
     <>
+      <Track event={EVENTS.landingView} />
       <script
         type="application/ld+json"
         // The payload is a literal defined above; nothing here comes from input.
@@ -244,6 +247,7 @@ export default async function LandingPage() {
       {/* ── pricing ──────────────────────────────────────────────────────── */}
       <Reveal>
         <section className="border-b border-rule py-14">
+          <Track event={EVENTS.pricingView} on="visible" />
           <p className="eyebrow mb-2 text-stamp">Pricing</p>
           <h2 className="mb-8 text-2xl font-bold tracking-[-0.015em]">Two plans</h2>
 
