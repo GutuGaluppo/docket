@@ -28,7 +28,7 @@ const limiter = createLimiter({
 export async function submitContact(input: unknown): Promise<ContactResult> {
   const parsed = contactSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Check your email, subject, and message." };
+    return { ok: false, error: "Check your name, email, subject, and message." };
   }
 
   const session = await auth();

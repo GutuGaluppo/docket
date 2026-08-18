@@ -42,7 +42,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </nav>
         {children}
-        <LegalFooter compact contactEmail={session.user.email ?? ""} />
+        <LegalFooter
+          compact
+          contactName={session.user.name ?? ""}
+          contactEmail={session.user.email ?? ""}
+        />
       </div>
     </div>
   );
