@@ -12,7 +12,7 @@ export { draftFromJsonLd, draftFromPosting, findJobPostings } from "./jsonld";
 export { splitLocation } from "./location";
 export { mergeDraft, type Contribution } from "./merge";
 export { isBlockedAddress } from "./net";
-export { blockedHost, hostMatches, inspectPostingUrl, type UrlVerdict } from "./url";
+export { BLOCKED_HOSTS, blockedHost, hostMatches, inspectPostingUrl, type UrlVerdict } from "./url";
 export {
   EMPTY_VALUES,
   POSTING_FIELDS,

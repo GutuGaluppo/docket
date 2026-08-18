@@ -12,7 +12,7 @@ import type { PostingFailure } from "./types";
  * user one extra copy and costs us no legal exposure at all. The stack detector
  * has always worked on pasted text; nothing is lost.
  */
-const BLOCKED_HOSTS: readonly string[] = [
+export const BLOCKED_HOSTS: readonly string[] = [
   "linkedin.com",
   "indeed.com",
   "glassdoor.com",
