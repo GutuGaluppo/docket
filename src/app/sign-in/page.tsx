@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { Track } from "@/components/analytics/Track";
+import { EVENTS } from "@/lib/analytics/events";
 import { auth, configuredProviders, signIn } from "@/auth";
 import { safeInternalPath } from "@/lib/routes";
 
@@ -24,6 +26,7 @@ export default async function SignInPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[420px] flex-col justify-center px-5 py-16">
+      <Track event={EVENTS.signupStarted} />
       <p className="eyebrow mb-2 text-stamp">Registry access</p>
       <h1 className="text-4xl font-bold tracking-[-0.02em]">Docket</h1>
       <p className="mt-3 max-w-[40ch] text-sm text-muted">

@@ -39,6 +39,11 @@ export const SUBPROCESSORS = [
   { name: "Vercel", role: "Hosting and delivery of the application", where: "Frankfurt, Germany" },
   { name: "Neon", role: "The database where the register is stored", where: "Frankfurt, Germany" },
   { name: "Resend", role: "Sending the follow-up emails you asked for", where: "Ireland" },
+  {
+    name: "PostHog",
+    role: "Counting the six product events listed above",
+    where: "Germany (EU cloud)",
+  },
   { name: "Google", role: "Sign-in, if you choose it", where: "Depends on your Google account" },
   { name: "GitHub", role: "Sign-in, if you choose it", where: "Depends on your GitHub account" },
 ] as const;

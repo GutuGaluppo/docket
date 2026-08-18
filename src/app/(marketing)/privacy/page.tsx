@@ -61,22 +61,33 @@ export default function PrivacyPage() {
           <b className="text-ink">Technical.</b> One cookie, which keeps you signed in. There is no
           advertising, tracking or profiling cookie, so there is no consent banner to click.
         </p>
+        <p>
+          <b className="text-ink">Counting.</b> Six things are counted so we can tell whether the
+          site works: the landing page being opened, the detector on it being used, the pricing
+          section being reached, the sign-in screen being opened, an account being created, and a
+          first entry being stamped. Nothing is stored on your device to do it — no cookie, no local
+          storage — so an anonymous visit leaves no identifier behind and cannot be joined to a
+          later one. Your IP is dropped before the measurement is sent. What you paste into the
+          detector on the landing page is never transmitted: only the fact that the box was used.
+          The last two counts are tied to your account, because by then you have one.
+        </p>
       </Clause>
 
       <Clause heading="Why we are allowed to">
         <p>
           Running your account and keeping the register is the performance of our agreement with you
           — art. 6(1)(b) GDPR. Keeping the service secure and preventing abuse rests on our
-          legitimate interest, art. 6(1)(f). Follow-up emails are sent only after you switch them on,
-          and switching them off stops them.
+          legitimate interest, art. 6(1)(f). Follow-up emails are sent only after you switch them
+          on, and switching them off stops them.
         </p>
       </Clause>
 
       <Clause heading="Sensitive information">
         <p>
-          The notes and job-description fields accept anything. Art. 9 GDPR treats data about health,
-          beliefs, union membership and similar as a special category with stricter rules. Docket is
-          not built to hold that, and the fields say so where you type. Please keep it out.
+          The notes and job-description fields accept anything. Art. 9 GDPR treats data about
+          health, beliefs, union membership and similar as a special category with stricter rules.
+          Docket is not built to hold that, and the fields say so where you type. Please keep it
+          out.
         </p>
       </Clause>
 
@@ -114,17 +125,17 @@ export default function PrivacyPage() {
         </div>
         <p className="mt-1">
           One more thing your browser does: to show a company logo it asks{" "}
-          <code className="font-mono text-xs">logo.clearbit.com</code>, falling back to Google&rsquo;s
-          favicon service. Those requests carry the company&rsquo;s domain name and your IP address,
-          never your identity or your notes.
+          <code className="font-mono text-xs">logo.clearbit.com</code>, falling back to
+          Google&rsquo;s favicon service. Those requests carry the company&rsquo;s domain name and
+          your IP address, never your identity or your notes.
         </p>
       </Clause>
 
       <Clause heading="How long">
         <p>
-          For as long as you keep the account. Delete it and every entry, tag, stage event, interview
-          and reminder goes with it, immediately and without a recovery window. Backups held by our
-          database provider roll off on their own schedule.
+          For as long as you keep the account. Delete it and every entry, tag, stage event,
+          interview and reminder goes with it, immediately and without a recovery window. Backups
+          held by our database provider roll off on their own schedule.
         </p>
       </Clause>
 
@@ -159,8 +170,8 @@ export default function PrivacyPage() {
       <Clause heading="What we will not do">
         <p>
           Sell your data. Share it with recruiters or employers. Use it to train anything. Show you
-          advertising. There is no other side to this product: the register has one reader, and it is
-          you.
+          advertising. There is no other side to this product: the register has one reader, and it
+          is you.
         </p>
       </Clause>
 

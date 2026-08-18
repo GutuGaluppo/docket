@@ -38,6 +38,12 @@ Two paths reach the register: `stampApplication`, behind the Stamp button, and
 `runImport`, behind a deliberate file upload. The link reader is neither — it
 ends at the form.
 
+`stampApplication` also emits one analytics count, `first_entry_stamped`, and
+only when the new row is Nº 1 — the last step of the funnel in section 3 of the
+brief. It carries no properties and no field values; failing to send it can
+never fail the stamp. See `src/lib/analytics/config.ts` for why the
+instrumentation is built the way it is.
+
 This is not caution for its own sake. A docket is a numbered register of things
 awaiting a decision, and its value is that every line in it was put there on
 purpose. A register that fills itself is a scrape, and a scrape with a wrong

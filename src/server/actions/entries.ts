@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { createEntry, deleteEntry } from "@/server/db/queries/applications";
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
+import { captureForUser } from "@/server/analytics/capture";
+import { EVENTS } from "@/lib/analytics/events";
 import { deleteEntrySchema, entryInputSchema } from "@/lib/validation/entry";
 
 export type ActionResult =
@@ -34,7 +36,7 @@ export async function stampApplication(input: unknown): Promise<ActionResult> {
   }
 
   const values = parsed.data;
-  await createEntry(scope, {
+  const created = await createEntry(scope, {
     company: values.company,
     website: values.website || null,
     position: values.position,
@@ -45,6 +47,13 @@ export async function stampApplication(input: unknown): Promise<ActionResult> {
     timezone: values.timezone || null,
     tags: values.tags,
   });
+
+  // Nº 1 is the last step of the funnel in section 3: the point where a visitor
+  // has become someone who uses the thing. Fired once per account by definition
+  // of the protocol number.
+  if (created.protocolNumber === 1) {
+    await captureForUser(scope.userId, EVENTS.firstEntryStamped);
+  }
 
   revalidatePath("/docket");
   return { ok: true };
