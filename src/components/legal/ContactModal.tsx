@@ -4,7 +4,13 @@ import { useRef, useState, useTransition } from "react";
 
 import { submitContact } from "@/server/actions/contact";
 
-export function ContactModal({ initialEmail = "" }: { initialEmail?: string }) {
+export function ContactModal({
+  initialName = "",
+  initialEmail = "",
+}: {
+  initialName?: string;
+  initialEmail?: string;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
@@ -80,6 +86,7 @@ export function ContactModal({ initialEmail = "" }: { initialEmail?: string }) {
 
                   startTransition(async () => {
                     const result = await submitContact({
+                      name: data.get("name"),
                       email: data.get("email"),
                       subject: data.get("subject"),
                       message: data.get("message"),
@@ -96,6 +103,22 @@ export function ContactModal({ initialEmail = "" }: { initialEmail?: string }) {
                   });
                 }}
               >
+                <div className="field">
+                  <label className="field-label" htmlFor="contact-name">
+                    Your name
+                  </label>
+                  <input
+                    id="contact-name"
+                    name="name"
+                    autoComplete="name"
+                    defaultValue={initialName}
+                    required
+                    minLength={2}
+                    maxLength={100}
+                    className="field-input"
+                  />
+                </div>
+
                 <div className="field">
                   <label className="field-label" htmlFor="contact-email">
                     Your email

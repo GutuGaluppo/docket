@@ -62,8 +62,8 @@ export default function PrivacyPage() {
           advertising, tracking or profiling cookie, so there is no consent banner to click.
         </p>
         <p>
-          <b className="text-ink">Contact.</b> When you use the contact form, we receive the email
-          address, subject and message you provide so we can read and reply to your request.
+          <b className="text-ink">Contact.</b> When you use the contact form, we receive the name,
+          email address, subject and message you provide so we can read and reply to your request.
         </p>
         <p>
           <b className="text-ink">Counting.</b> Seven things are counted so we can tell whether the

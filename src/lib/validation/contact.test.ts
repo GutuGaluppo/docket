@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { contactSchema } from "./contact";
 
 const valid = {
+  name: "Ada Lovelace",
   email: "candidate@example.com",
   subject: "Question about my account",
   message: "Could you help me with my account settings?",
@@ -23,6 +24,10 @@ describe("contactSchema", () => {
 
   it("rejects malformed email addresses", () => {
     expect(contactSchema.safeParse({ ...valid, email: "not-an-email" }).success).toBe(false);
+  });
+
+  it("rejects a missing sender name", () => {
+    expect(contactSchema.safeParse({ ...valid, name: " " }).success).toBe(false);
   });
 
   it("rejects messages too short to be actionable", () => {
