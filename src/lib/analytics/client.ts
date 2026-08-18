@@ -1,5 +1,5 @@
 import { analyticsSettings, POSTHOG_EU_HOST } from "./config";
-import type { EventName } from "./events";
+import type { EventName, EventProps } from "./events";
 
 /**
  * PostHog, loaded only if it is ever needed and never before the browser is
@@ -25,7 +25,7 @@ import type { EventName } from "./events";
  * a module whose whole point is that posthog-js is not referenced until an
  * event is actually captured.
  */
-type Handle = { capture: (event: EventName) => unknown };
+type Handle = { capture: (event: EventName, properties?: Record<string, string>) => unknown };
 
 let ready: Promise<Handle | null> | null = null;
 
@@ -60,8 +60,12 @@ function load(): Promise<Handle | null> {
  * is worth breaking a page over — an ad blocker, an offline visitor and a
  * missing key all end the same way: silently.
  */
-export function capture(event: EventName): void {
+export function capture<N extends EventName>(
+  event: N,
+  ...props: N extends keyof EventProps ? [EventProps[N]] : []
+): void {
+  const properties = props[0] as Record<string, string> | undefined;
   void load()
-    .then((posthog) => posthog?.capture(event))
+    .then((posthog) => posthog?.capture(event, properties))
     .catch(() => {});
 }

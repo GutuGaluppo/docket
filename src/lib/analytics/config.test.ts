@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { analyticsSettings, eventPayload, POSTHOG_EU_HOST } from "./config";
-import { ANONYMOUS_EVENTS, EVENTS, IDENTIFIED_EVENTS } from "./events";
+import { ANONYMOUS_EVENTS, EVENTS, IDENTIFIED_EVENTS, PRO_LIMITS } from "./events";
 
 /**
  * The privacy policy tells visitors there is no tracking or profiling cookie
@@ -55,13 +55,14 @@ describe("analytics settings keep the published promise", () => {
 });
 
 describe("the event list stays closed", () => {
-  it("is exactly the six the funnel asks for", () => {
+  it("is exactly the events that are declared, and no others", () => {
     expect(Object.values(EVENTS).sort()).toEqual(
       [
         "first_entry_stamped",
         "hero_detector_used",
         "landing_view",
         "pricing_view",
+        "pro_limit_reached",
         "signup_completed",
         "signup_started",
       ].sort(),
@@ -78,7 +79,25 @@ describe("the event list stays closed", () => {
     }
   });
 
-  it("carries no properties — a count, never a copy of what was counted", () => {
+  it("carries no properties on the events that could otherwise carry content", () => {
+    // The job advert pasted into the hero is the one thing the landing promises
+    // never leaves the browser, so this event stays bare by construction.
     expect(eventPayload(EVENTS.heroDetectorUsed)).toEqual({ event: "hero_detector_used" });
+    expect(eventPayload(EVENTS.landingView)).toEqual({ event: "landing_view" });
+    expect(eventPayload(EVENTS.firstEntryStamped)).toEqual({ event: "first_entry_stamped" });
+  });
+
+  it("allows a property only from a closed set", () => {
+    expect(eventPayload(EVENTS.proLimitReached, { limit: "stages" })).toEqual({
+      event: "pro_limit_reached",
+      properties: { limit: "stages" },
+    });
+
+    // Every value the property can hold is a literal written in this repository,
+    // so no input a person typed can ever reach it.
+    expect(PRO_LIMITS).toEqual(["stages", "follow-ups", "analytics"]);
+    for (const limit of PRO_LIMITS) {
+      expect(typeof limit).toBe("string");
+    }
   });
 });
