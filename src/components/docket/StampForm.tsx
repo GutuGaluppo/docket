@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { entryInputSchema, type EntryInput, type EntryValues } from "@/lib/validation/entry";
 import { FreeTextCaution } from "@/components/FreeTextCaution";
 import { CityField } from "./CityField";
+import { DraftReview } from "./DraftReview";
+import { PostingImport } from "./PostingImport";
 import { detectStack, resolveTags } from "@/lib/stack-detector";
 import { probableDomain } from "@/lib/company/domain";
+import type { PostingDraft, PostingField, PostingSource } from "@/lib/posting/types";
 import { stampApplication } from "@/server/actions/entries";
 
 const EMPTY: EntryInput = {
@@ -23,6 +26,11 @@ const EMPTY: EntryInput = {
   timezone: "",
 };
 
+/** Fields the link reader can fill that this form registers directly. */
+type TextField = "company" | "website" | "position" | "jobDescription";
+
+type RegisterEvent = Parameters<UseFormRegisterReturn["onChange"]>[0];
+
 export function StampForm() {
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState("");
@@ -32,6 +40,22 @@ export function StampForm() {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [manual, setManual] = useState<string[]>([]);
   const [manualDraft, setManualDraft] = useState("");
+
+  /*
+    Phase B — the review step.
+
+    `marked` holds the fields a pasted link filled and the person has not yet
+    looked at. It is not validation and it does not gate the submit: a draft
+    that is already correct can be stamped straight away. What it does is refuse
+    to let a machine-written value pass for a hand-written one — every marked
+    field carries the highlighter until it is edited, accepted, or stamped.
+
+    The whole feature is built around this state. The link reader deliberately
+    stops at "here is a draft"; the register is still only ever written by
+    someone pressing Stamp.
+  */
+  const [marked, setMarked] = useState<PostingField[]>([]);
+  const [sources, setSources] = useState<PostingSource[]>([]);
 
   const {
     register,
@@ -61,6 +85,49 @@ export function StampForm() {
     setValue("tags", tags, { shouldValidate: false });
   }, [tags, setValue]);
 
+  function clearMarks() {
+    setMarked([]);
+    setSources([]);
+  }
+
+  function unmark(...fields: PostingField[]) {
+    setMarked((list) =>
+      list.length === 0 ? list : list.filter((field) => !fields.includes(field)),
+    );
+  }
+
+  /** Registers a text field and puts the highlighter on it while it is unread. */
+  function markable(field: TextField, base: string) {
+    const registered = register(field);
+    return {
+      ...registered,
+      onChange: (event: RegisterEvent) => {
+        unmark(field);
+        return registered.onChange(event);
+      },
+      className: marked.includes(field) ? `${base} marked` : base,
+    };
+  }
+
+  /**
+   * A draft never merges into what is already on the form. Someone who typed
+   * three fields and then pasted a link is asking for the link's version; a
+   * half-and-half record where nobody can tell which half came from where is
+   * the outcome worth avoiding.
+   */
+  function applyDraft(draft: PostingDraft) {
+    for (const field of draft.filled) {
+      setValue(field, draft.values[field], { shouldValidate: false });
+    }
+    // The tag edits belonged to the previous description.
+    setDismissed([]);
+    setManual([]);
+    setManualDraft("");
+    setServerError("");
+    setMarked(draft.filled);
+    setSources(draft.sources);
+  }
+
   function addTag(value: string) {
     const clean = value.trim();
     if (!clean) return;
@@ -83,6 +150,7 @@ export function StampForm() {
     setDismissed([]);
     setManual([]);
     setManualDraft("");
+    unmark("jobDescription");
   }
 
   const onSubmit = handleSubmit((values) => {
@@ -98,6 +166,7 @@ export function StampForm() {
         setDismissed([]);
         setManual([]);
         setManualDraft("");
+        clearMarks();
       } else {
         setServerError(result.error);
       }
@@ -133,41 +202,50 @@ export function StampForm() {
     >
       <p className="eyebrow mb-4 text-muted">New entry</p>
 
+      <DraftReview filled={marked} sources={sources} onAccept={clearMarks} />
+
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        <PostingImport onDraft={applyDraft} disabled={pending} />
+
         <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="company">
             Company
+            {marked.includes("company") && <span className="mark-flag">check</span>}
           </label>
           <input
             id="company"
             data-form-type="other"
             suppressHydrationWarning
-            className="field-input"
             placeholder="e.g. Loudly"
-            {...register("company")}
+            {...markable("company", "field-input")}
           />
         </div>
 
         <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="website">
             Website
-            <span className="field-hint">optional — brings the logo</span>
+            {marked.includes("website") ? (
+              <span className="mark-flag">check</span>
+            ) : (
+              <span className="field-hint">optional — brings the logo</span>
+            )}
           </label>
           <input
             id="website"
             data-form-type="other"
             suppressHydrationWarning
-            className="field-input"
             autoComplete="off"
             placeholder={company ? probableDomain(company) : "e.g. loudly.com"}
-            {...register("website")}
+            {...markable("website", "field-input")}
           />
         </div>
 
         <CityField
           city={city}
           country={country}
+          marked={marked.includes("city") || marked.includes("country")}
           onChange={(next) => {
+            unmark("city", "country");
             setValue("city", next.city);
             setValue("country", next.country);
           }}
@@ -176,30 +254,35 @@ export function StampForm() {
         <div className="field" suppressHydrationWarning>
           <label className="field-label" htmlFor="position">
             Position
+            {marked.includes("position") && <span className="mark-flag">check</span>}
           </label>
           <input
             id="position"
             data-form-type="other"
             suppressHydrationWarning
-            className="field-input"
             placeholder="e.g. Senior Frontend Developer"
-            {...register("position")}
+            {...markable("position", "field-input")}
           />
         </div>
 
         <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="jobDescription">
             Job description
-            <span className="field-hint">paste the ad — technologies become tags on their own</span>
+            {marked.includes("jobDescription") ? (
+              <span className="mark-flag">check</span>
+            ) : (
+              <span className="field-hint">
+                paste the ad — technologies become tags on their own
+              </span>
+            )}
           </label>
           <textarea
             id="jobDescription"
             data-form-type="other"
             suppressHydrationWarning
             rows={5}
-            className="field-textarea min-h-[108px]"
             placeholder="Paste the requirements here. e.g. You'll work with React, TypeScript and Next.js, with a Node.js/GraphQL backend deployed on AWS…"
-            {...register("jobDescription")}
+            {...markable("jobDescription", "field-textarea min-h-[108px]")}
           />
           <FreeTextCaution />
 
@@ -283,6 +366,10 @@ export function StampForm() {
         {firstError ? (
           <span role="alert" className="font-mono text-xs text-flag">
             {firstError}
+          </span>
+        ) : marked.length > 0 ? (
+          <span className="font-mono text-xs text-mark-ink">
+            Read the highlighted fields — they were filled from the link, not by you.
           </span>
         ) : (
           <span className="font-mono text-xs text-muted">

@@ -11,11 +11,14 @@ import { searchCities, type CityMatch } from "@/lib/cities";
 export function CityField({
   city,
   country,
+  marked,
   onChange,
   onSubmitShortcut,
 }: {
   city: string;
   country: string;
+  /** The value arrived from a pasted link and has not been read yet. */
+  marked?: boolean;
   onChange: (value: { city: string; country: string }) => void;
   onSubmitShortcut?: () => void;
 }) {
@@ -69,12 +72,13 @@ export function CityField({
       <label className="field-label" htmlFor={id}>
         City
         {country && <span className="font-mono font-bold normal-case text-stamp">→ {country}</span>}
+        {marked && <span className="mark-flag">check</span>}
       </label>
       <input
         id={id}
         data-form-type="other"
         suppressHydrationWarning
-        className="field-input"
+        className={marked ? "field-input marked" : "field-input"}
         role="combobox"
         aria-expanded={open && suggestions.length > 0}
         aria-autocomplete="list"
