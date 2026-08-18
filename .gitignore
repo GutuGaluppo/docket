@@ -23,3 +23,6 @@ blob-report/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Documentação interna de trabalho — não versionada por decisão do autor
+doc/
