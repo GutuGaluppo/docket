@@ -20,6 +20,24 @@ an entry. The link reader produces a _draft_ and stops; `stampApplication` in
 `src/server/actions/entries.ts` is the only path to a row, and it runs because
 somebody pressed a button.
 
+```mermaid
+flowchart LR
+  L["Pasted link"] --> RD["draftFromLink()<br/><i>reads, never writes</i>"]
+  RD --> FM["Form state"]
+  T["Typing"] --> FM
+  FM -->|"a person presses Stamp"| SA["stampApplication()<br/>server/actions/entries.ts"]
+  IM["CSV / JSON import"] --> RI["runImport()<br/>server/import/run.ts"]
+  SA --> DB[("Register")]
+  RI --> DB
+
+  style RD stroke-dasharray:4 3
+  style DB stroke-width:2px
+```
+
+Two paths reach the register: `stampApplication`, behind the Stamp button, and
+`runImport`, behind a deliberate file upload. The link reader is neither — it
+ends at the form.
+
 This is not caution for its own sake. A docket is a numbered register of things
 awaiting a decision, and its value is that every line in it was put there on
 purpose. A register that fills itself is a scrape, and a scrape with a wrong
@@ -76,10 +94,21 @@ tag the user removed.
 
 ### `entryInputSchema` runs twice
 
-Once in the browser through `zodResolver`, once again inside the server action.
+The same schema is applied at two points, for two different reasons:
+
+```ts
+// StampForm.tsx — in the browser, so the person sees the error next to the field
+useForm({ resolver: zodResolver(entryInputSchema) });
+
+// entries.ts — on the server, because this is the check
+const parsed = entryInputSchema.safeParse(input);
+if (!parsed.success) return { ok: false, error: … };
+```
+
 The client copy is a convenience. The server copy is the check — a server action
 is a public endpoint reachable by anyone who can craft a POST, whatever button
-appears to call it.
+appears to call it. Removing the browser copy degrades the experience; removing
+the server copy removes the validation.
 
 ---
 
@@ -128,11 +157,35 @@ is safe to have a heuristic layer at all, and the reason an adapter for a board
 whose response shape cannot be verified from here is a reasonable thing to ship:
 if it is wrong, it contributes nothing, and the phase below it answers instead.
 
-`mergeDraft` also does the tidying every phase would otherwise repeat —
-whitespace, a 160-character cap on short fields, a 12 000-character cap on the
-description, `normalizeDomain` on the website — and runs the same city → country
-deduction the city field performs when a person types, without ever overriding a
-country the advert stated itself.
+Worked example. A Greenhouse link where the board API knows the title and the
+description, the page's structured data knows the employer, and the markup
+contributes only the host:
+
+| Field            | ① Greenhouse (phase C) | ② structured data (A) | ③ page text (D)  | **Merged**                  |
+| ---------------- | ---------------------- | --------------------- | ---------------- | --------------------------- |
+| `position`       | `Senior Frontend Dev`  | `Careers \| Loudly`   | `Careers`        | **① `Senior Frontend Dev`** |
+| `company`        | —                      | `Loudly`              | `Loudly Careers` | **② `Loudly`**              |
+| `website`        | —                      | —                     | `loudly.com`     | **③ `loudly.com`**          |
+| `city`           | `Berlin`               | `Berlin`              | —                | **① `Berlin`**              |
+| `country`        | —                      | —                     | —                | **`Germany`** ← deduced     |
+| `jobDescription` | `You will work with…`  | `You will work with…` | (nav chrome)     | **① `You will work with…`** |
+
+Note rows 1 and 6: phase D held a plausible-looking but wrong value in both, and
+was never consulted because a better layer had already answered. That is the
+protection, stated as a table.
+
+`mergeDraft` also does the tidying every phase would otherwise repeat:
+
+| Step                         | Effect                                          |
+| ---------------------------- | ----------------------------------------------- |
+| Whitespace collapse          | `"  Senior   Dev "` → `"Senior Dev"`            |
+| Short-field cap              | 160 characters                                  |
+| Description cap              | 12 000 characters, ellipsis appended            |
+| `normalizeDomain` on website | `https://www.loudly.com/careers` → `loudly.com` |
+| City → country deduction     | `Berlin` → country `Germany`, if still empty    |
+
+The deduction is the same one the city field performs when a person types, and
+it never overrides a country the advert stated itself.
 
 ### Module map
 
@@ -186,9 +239,44 @@ than what the spec suggests:
 - a page shipping several blocks — the one answering the most fields wins
 - a malformed block sitting next to a good one, which is skipped, never thrown
 
+A block as it arrives, and what `draftFromPosting` takes from it:
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "JobPosting",
+  "title": "Senior Frontend Developer",
+  "description": "<p>You will work with <b>React</b>, TypeScript and Next.js.</p>",
+  "hiringOrganization": {
+    "@type": "Organization",
+    "name": "Loudly",
+    "sameAs": "https://www.loudly.com/"
+  },
+  "jobLocation": {
+    "@type": "Place",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Berlin",
+      "addressCountry": "Germany"
+    }
+  }
+}
+```
+
+```ts
+{
+  position:       "Senior Frontend Developer",
+  company:        "Loudly",
+  website:        "loudly.com",              // normalizeDomain(sameAs)
+  city:           "Berlin",
+  country:        "Germany",
+  jobDescription: "You will work with React, TypeScript and Next.js.",  // stripTags
+}
+```
+
 One deliberate omission: `addressCountry` is allowed to be a two-letter code, and
-a code is not a country name. `DE` is dropped rather than written into a column
-that holds `Germany`.
+a code is not a country name. Given `"addressCountry": "DE"` the field comes back
+empty rather than putting `DE` in a column that holds `Germany`.
 
 `src/lib/posting/html.ts` does the reading with regexes and no parser
 dependency. For six fields off a page that is already required to publish them
@@ -219,12 +307,34 @@ it, and they are three on purpose:
    automatically" with "read the highlighted fields — they were filled from the
    link, not by you" while any mark remains.
 
-A mark comes off when that field is edited, when the person clicks _Looks right
-— clear the marks_, or when the entry is stamped.
+![The form after reading a Greenhouse link: the notice names the source and the
+four fields it wrote, and each of those fields carries the highlighter and a
+CHECK flag on its label.](images/entry-form-review-light.png)
+
+The same state on the dark ground, where the gold becomes text and border
+instead of fill:
+
+![The same review state in the dark theme.](images/entry-form-review-dark.png)
+
+A mark has one lifecycle, and three ways out of it:
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> Unmarked: typed by hand
+  [*] --> Marked: written by the link reader
+  Marked --> Unmarked: the field is edited
+  Marked --> Unmarked: "Looks right — clear the marks"
+  Marked --> [*]: stamped
+  Unmarked --> [*]: stamped
+```
+
+`Marked → stamped` is a legal transition: a draft that is already correct can be
+stamped immediately, marks and all.
 
 **Nothing is blocked and nothing is nagged.** A draft that is already correct can
 be stamped immediately, in one click. The mark is not validation; it exists so
-that _I read it_ and _I did not notice_ stop looking the same.
+a field that was read and a field that was overlooked stop looking the same.
 
 `applyDraft` replaces the filled fields wholesale rather than merging into what
 is on the form. Somebody who typed three fields and then pasted a link is asking
@@ -292,6 +402,32 @@ nothing.
   `splitLocation` then keeps only the pieces the local city base recognises and
   drops the rest. A fragment that cannot be placed is not written.
 
+Each helper, by example:
+
+| `splitTitle(…)`                         | → position                  | → company                         |
+| --------------------------------------- | --------------------------- | --------------------------------- |
+| `"Senior Frontend Developer \| Loudly"` | `Senior Frontend Developer` | `Loudly`                          |
+| `"Data Engineer at Loudly"`             | `Data Engineer`             | `Loudly`                          |
+| `"Backend Developer — Careers"`         | `Backend Developer`         | `""` — a section, not an employer |
+| `"Senior Frontend Developer"`           | `Senior Frontend Developer` | `""` — guessing would invent it   |
+
+| `hostBrand(…)`       | →                                           |
+| -------------------- | ------------------------------------------- |
+| `careers.loudly.com` | `loudly.com`                                |
+| `jobs.loudly.co.uk`  | `loudly.co.uk`                              |
+| `careers.com`        | `careers.com` — never reduced to a bare TLD |
+
+| `splitLocation(…)`      | → city   | → country           |
+| ----------------------- | -------- | ------------------- |
+| `"Berlin, Germany"`     | `Berlin` | `Germany`           |
+| `"Berlin"`              | `Berlin` | `Germany` — deduced |
+| `"London, UK (Hybrid)"` | `London` | `United Kingdom`    |
+| `"Remote"`              | —        | —                   |
+| `"Somewhere Fictional"` | —        | —                   |
+
+The last two rows are the phase working correctly: nothing recognised, nothing
+written.
+
 ---
 
 ## Security
@@ -303,6 +439,32 @@ port scanner.
 
 The control is split in two so that the half which can be tested without a
 socket, is.
+
+```mermaid
+flowchart TD
+  U["URL"] --> P{"inspectPostingUrl()<br/>pure — no network"}
+  P -->|"non-web scheme · literal private address<br/>no dot · localhost · board that refuses servers"| R["Refused"]
+  P -->|ok| H["safeFetch()"]
+
+  subgraph loop["per hop, 3 hops maximum"]
+    direction TB
+    H --> D["DNS lookup — every record"]
+    D --> A{"isBlockedAddress()"}
+    A -->|"any one is private"| R
+    A -->|"all public"| F["fetch, redirect: manual"]
+    F -->|"3xx"| N["resolve Location<br/>against current URL"]
+    N --> D
+  end
+
+  F -->|"2xx"| C["Read body in chunks<br/>stop at 2 MB"]
+  C --> OK["Body"]
+```
+
+Two properties of that loop matter more than the individual ranges. The check
+runs **inside** the redirect loop, not once before it, so a public host cannot
+redirect the request onto a private one. And **every** DNS answer must pass, not
+just the first — one private record among several is enough to make the fetch
+unsafe.
 
 **`src/lib/posting/net.ts`** — pure, string in, boolean out. Refuses loopback,
 RFC 1918 private space, link-local (`169.254/16` — where cloud metadata lives),
@@ -327,8 +489,17 @@ timeout.
 
 ### Hosts that are refused up front
 
-`linkedin.com`, `indeed.com`, `glassdoor.com`, `ziprecruiter.com`,
-`monster.com`, `dice.com`.
+| Host               | Why                                                               |
+| ------------------ | ----------------------------------------------------------------- |
+| `linkedin.com`     | User agreement forbids automated retrieval; blocks datacentre IPs |
+| `indeed.com`       | Blocks datacentre IPs                                             |
+| `glassdoor.com`    | Blocks datacentre IPs                                             |
+| `ziprecruiter.com` | Blocks datacentre IPs                                             |
+| `monster.com`      | Blocks datacentre IPs                                             |
+| `dice.com`         | Blocks datacentre IPs                                             |
+
+Matching is by domain and subdomain, so `uk.indeed.com` is caught and
+`notlinkedin.com` is not.
 
 These reject datacentre IPs on sight, and LinkedIn's user agreement forbids
 automated retrieval outright. Rather than ship something that fails half the
@@ -340,17 +511,37 @@ lost.
 ### Residual risk, written down
 
 The address is checked at resolution and the socket is opened by `fetch` a
-moment later, so a domain whose DNS answer changes between the two could still
-slip through — a rebinding attack. Closing it properly means dialling the
-resolved IP directly and carrying the `Host` header by hand. For a register that
+moment later. A domain whose DNS answer changes between the two could still slip
+through — a rebinding attack:
+
+```mermaid
+sequenceDiagram
+  participant S as safeFetch
+  participant N as DNS
+  participant T as attacker-controlled name
+  S->>N: lookup(host)
+  N-->>S: 93.184.216.34 — public, passes
+  Note over S,T: the window — TTL 0, the second answer differs
+  S->>T: fetch(host)
+  T-->>S: connects to 127.0.0.1
+```
+
+Closing it properly means dialling the resolved IP directly and carrying the
+`Host` header by hand. For a register that
 fetches public job adverts from links its own signed-in users paste,
 resolve-and-judge plus the redirect check is the proportionate control. **If this
 endpoint ever accepts untrusted input, pinning is the next thing to build.**
 
 ### Throttle
 
-`src/server/actions/posting.ts` allows one link per two seconds and twenty per
-minute per user. It is per-instance and therefore best-effort: serverless gives
+| Limit          | Value                  |
+| -------------- | ---------------------- |
+| Minimum gap    | 2 s between links      |
+| Window         | 60 s                   |
+| Maximum window | 20 links               |
+| Scope          | Per user, per instance |
+
+`src/server/actions/posting.ts` enforces these before the URL is inspected. It is per-instance and therefore best-effort: serverless gives
 every cold start its own copy. It is a brake on a runaway loop, not a quota. A
 real quota belongs in the database, and is worth adding the day this endpoint is
 worth abusing.
@@ -380,14 +571,22 @@ act on. They are shown under the link box.
 **An LLM fallback for pages with no structured data.** It was scoped as phase E
 and dropped. Recorded here so the reasoning does not have to be reconstructed:
 
-- The majority of links are covered without it. Structured data is not a
-  fallback — it is the main path, and it is exact.
-- It would make the model provider a **new subprocessor**, requiring a privacy
-  policy update and an entry in `SUBPROCESSORS` (`src/lib/legal.ts`), because
-  advert text can carry personal data.
-- The one field an LLM would be best at — recognising technologies — is the one
-  field `detectStack` already does better, because it cannot invent a technology
-  that is not in its dictionary.
+| Reason             | Detail                                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Coverage           | Most links are already answered without it. Structured data is not a fallback — it is the main path, and it is exact.                                                                   |
+| Legal surface      | The model provider becomes a **new subprocessor**, requiring a privacy-policy update and an entry in `SUBPROCESSORS` (`src/lib/legal.ts`), because advert text can carry personal data. |
+| No capability gain | The field an LLM would be best at — recognising technologies — is the one `detectStack` already does better, because it cannot invent a technology absent from its dictionary.          |
+
+Where it would slot in, if revisited:
+
+```ts
+mergeDraft([
+  { source: "Greenhouse", … },       // phase C
+  { source: "structured data", … },  // phase A
+  { source: "page text", … },        // phase D
+  { source: "model", … },            // phase E — last, so it can only fill gaps
+]);
+```
 
 If it is ever revisited, it belongs _below_ phase D in `mergeDraft`, taking
 already-cleaned text rather than raw HTML.
@@ -419,8 +618,9 @@ Architecture rule 2, enforced by `src/lib/posting/documentation.test.ts` in the
 same spirit as rule 1 in `src/server/db/queries/scope.test.ts` — by reading the
 source rather than by trusting review.
 
-**When you add, rename, delete or refactor any part of the entry form or the
-link pipeline, update this file in the same commit.** The test fails otherwise.
+**Adding, renaming, deleting or refactoring any part of the entry form or the
+link pipeline means updating this file in the same commit.** The test fails
+otherwise.
 
 It checks the things that actually drift, and only those:
 
@@ -432,10 +632,28 @@ It checks the things that actually drift, and only those:
 | Every `POSTING_FIELDS` entry appears in the field table | A seventh field added silently                   |
 | Every `BLOCKED_HOSTS` entry is listed here              | The refusal list drifting from the prose         |
 | A section exists for each phase A–D                     | A phase quietly removed                          |
+| Every figure shown here exists in `docs/images/`        | An image deleted or renamed                      |
 
 It does **not** check prose, wording or structure. A rule that fires on every
-cosmetic edit gets satisfied mechanically and stops meaning anything; these six
+cosmetic edit gets satisfied mechanically and stops meaning anything; these seven
 checks fail only when the document has become _wrong_.
 
-The description of _why_ each phase does what it does is not machine-checkable
-and is the part most worth keeping accurate. That part is on you.
+The description of _why_ each phase behaves as it does is not machine-checkable,
+and is the part most worth keeping accurate. No test defends it.
+
+### House style
+
+Documentation here is written to teach the system, not to narrate its
+construction.
+
+| Rule                              | Instead of                          | Write                                              |
+| --------------------------------- | ----------------------------------- | -------------------------------------------------- |
+| Impersonal                        | "I added a merge step"              | "The merge takes the first non-empty value"        |
+| No reference to how it came about | "As requested, phase E was dropped" | "Phase E was scoped and not built, because…"       |
+| Present tense, system as subject  | "This will normalise the domain"    | "`normalizeDomain` reduces the value to a host"    |
+| Reasons attached to facts         | "`DE` is dropped"                   | "A code is not a country name, so `DE` is dropped" |
+| Illustrate before elaborating     | A fourth paragraph                  | A diagram, a table, or an input → output example   |
+
+A reader arriving in six months has no access to the conversation that produced
+any of this, does not know who wrote it, and gains nothing from either. Every
+sentence spent on authorship is a sentence not spent on the system.
