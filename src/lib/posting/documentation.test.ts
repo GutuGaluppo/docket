@@ -76,6 +76,19 @@ describe(`${DOC} describes the code as it is`, () => {
     }
   });
 
+  it("points at figures that exist", () => {
+    // Images are relative to the document, not to the repository root.
+    const figures = [...doc.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1] ?? "");
+    expect(figures.length).toBeGreaterThan(0);
+
+    for (const figure of figures) {
+      expect(
+        existsSync(join(root, "docs", figure)),
+        `${DOC} shows a figure that is not in the repository: ${figure}`,
+      ).toBe(true);
+    }
+  });
+
   it("lists every board adapter", () => {
     for (const adapter of BOARD_ADAPTERS) {
       expect(
