@@ -1,33 +1,33 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { CabinetTabs } from "@/components/CabinetTabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { getSession } from "@/server/auth/session";
 
 /**
  * The real authorisation gate. Middleware only looks at a cookie; this is
  * where the session is validated against the database before anything renders.
+ *
+ * The shell it renders is a drawer: the label plate and the controls that are
+ * not sections sit on the front, the sections are folder tabs along the top
+ * edge, and the page is the folder standing open behind the one that is
+ * forward. See `.cabinet` in `globals.css` for why it is drawn that way.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) redirect("/sign-in");
 
   return (
-    <div className="min-h-screen px-5 pt-10 pb-20">
+    <div className="min-h-screen px-4 pt-8 pb-16 sm:px-5 sm:pt-10">
       <div className="mx-auto max-w-[1080px]">
-        <nav className="mb-6 flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] tracking-[0.1em] text-muted uppercase">
-          <div className="flex items-center gap-5">
-            <Link href="/docket" className="text-ink">
-              Docket
-            </Link>
-            <Link href="/board">Board</Link>
-            <Link href="/calendar">Calendar</Link>
-            <Link href="/analytics">Analytics</Link>
-            <Link href="/docket/import">Import</Link>
-            <Link href="/settings">Settings</Link>
-          </div>
-          <div className="flex items-center gap-4">
+        <div className="cabinet-head">
+          <Link href="/docket" className="cabinet-plate">
+            Docket
+          </Link>
+          <div className="flex items-center gap-4 font-mono text-[11px] tracking-[0.1em] text-muted uppercase">
             <ThemeToggle />
             <form
               action={async () => {
@@ -40,8 +40,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </button>
             </form>
           </div>
-        </nav>
-        {children}
+        </div>
+
+        <div className="cabinet">
+          <CabinetTabs />
+          <div className="folder">{children}</div>
+        </div>
+
         <LegalFooter
           compact
           contactName={session.user.name ?? ""}

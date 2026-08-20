@@ -56,11 +56,13 @@ sign-in page will simply say none is configured.
 ```
 src/
   app/
-    (app)/          docket, docket/import, settings — behind the session gate
+    (app)/          docket, board, calendar, archive, analytics, import, settings
+                    — behind the session gate
     api/            auth callbacks, POST /api/import
     sign-in/
   components/
     docket/         Stamp, StampForm, EntriesTable, CityField, CompanyLogo
+    archive/        the rejection archive: RejectionsTable, ReopenButton
     settings/
   server/
     actions/        one server action per use case
@@ -77,6 +79,8 @@ src/
     validation/     Zod schemas shared by form and action
 docs/
   entry-form.md     the entry form and the link pipeline, kept true by a test
+  loading.md        what waits on a query in each section, kept true by a test
+  pitch.md          the product in a paragraph, in English and Portuguese
 ```
 
 ## The rules that hold this up
@@ -87,14 +91,26 @@ docs/
    if any read, update or delete escapes the owner predicate.
 2. **Server actions check the session first, then Zod, then touch the database.** No exceptions:
    an action is a public endpoint regardless of which button called it.
-3. **No `any`.** `strict` and `noUncheckedIndexedAccess` are on.
-4. **The version in the footer is bumped by hand, on releases worth marking.**
+   A correlated subquery names its outer column as `${applications}."id"`, never
+   `${applications.id}`. Drizzle renders the short form without the table name when the fragment
+   is a select field, and inside a subquery over a table that has an `id` of its own — `interviews`,
+   `status_events` — that bare name binds to the inner table. Nothing errors; the field is simply
+   null or zero for every row. `correlated.test.ts` fails on the short form.
+3. **A page's shell never waits on a query.** The heading, the prose and the forms of a section
+   do not depend on the database, so they are returned first and the queries are awaited inside
+   `<Suspense>` boundaries drawn around the regions that actually need them — the register's rows,
+   the board's columns, the month grid. A page-wide skeleton is the wrong answer: it hides work
+   that was already done. `src/components/Skeleton.tsx` holds the shapes, drawn at the size of what
+   they stand in for so nothing jumps. A section with nothing to fetch — `/docket/import` — has no
+   loader at all.
+4. **No `any`.** `strict` and `noUncheckedIndexedAccess` are on.
+5. **The version in the footer is bumped by hand, on releases worth marking.**
    `package.json` is the single source and `src/lib/version.ts` is the only reader, so
    `pnpm version minor` moves the number everywhere it appears. It marks a release someone
    decided was worth marking — a judgement no commit count can make — so it does not move on
    every merge. Hovering it shows the commit the running deployment was built from, which is the
    separate question of whether a fix is live yet.
-5. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
+6. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
    describes the form and the four phases of the link pipeline;
    `src/lib/posting/documentation.test.ts` reads the source and fails when a module, board, field,
    refused host or phase in the code is missing from the document, or when the document points at a
@@ -125,7 +141,43 @@ City names are canonicalised to English on the way in — typing or importing �
 later. Rows that cannot be read are reported back with their line number; nothing is dropped
 silently.
 
+## The rejection archive
+
+Applications that ended in a refusal leave the register and the board, and are kept at `/archive`.
+Nothing is deleted: the entry keeps its protocol number, its stamp and its history, and **Reopen**
+puts it back in the column it was in when the refusal landed.
+
+There is one way in, reached from two places. **Rejected** on a docket row, with an optional line
+about what they said, and dropping a card into the board's last column both call the same code —
+so the board, the funnel and the archive can never disagree about where an entry ended up. The
+column the process had reached is copied onto the entry by name, the way `status_events` copies it,
+so the archive still reads correctly after that column is renamed or removed.
+
+The figure worth reading there is not the total but how many refusals arrived before a single
+interview was booked: applications dying at the door and applications dying after someone has met
+you are different problems, and only one of them is answered by sending more.
+
+Filed entries stay out of the follow-up reminders — the answer already came — and out of the
+docket's default listing and its exports, while the `In total` figure above the register keeps
+counting every entry ever stamped.
+
 ## Your data
 
-Export as CSV (`/docket/export`) or complete JSON (`/settings/export`) at any time, and delete the
-account from `/settings`. Deletion cascades to every entry, tag and status event immediately.
+Export the register at any time from `/docket/export`, in the form that suits where it is going:
+
+| `?format=` | What it is                                                                           | What it is for                            |
+| ---------- | ------------------------------------------------------------------------------------ | ----------------------------------------- |
+| `pdf`      | A4 landscape, header repeated and pages numbered, long cells wrapped rather than cut | Reading, printing, attaching to something |
+| `xlsx`     | A real workbook: numbers as numbers, stamps as dates, header frozen, stack wrapped   | Opening in Excel without an import wizard |
+| `csv`      | Every column quoted, every value text, with a BOM                                    | Anything that has to accept anything      |
+
+A request with no `format` is a CSV, which is what that route meant before it had any.
+
+Each is written by hand — `src/lib/export/` — rather than through a document library: the formats
+are small and specified, and the register is the only thing being written into them. The search on
+screen is carried through, so a filtered docket exports the rows on screen; the order is always by
+protocol number, because a register is read in the order it was written.
+
+Complete JSON, including the job descriptions no table carries, is at `/settings/export`. The
+account can be deleted from `/settings`; deletion cascades to every entry, tag and status event
+immediately.
