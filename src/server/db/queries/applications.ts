@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { applications, applicationTags, stages, statusEvents } from "@/server/db/schema";
@@ -27,17 +27,17 @@ export type Entry = {
 };
 
 /** Tags aggregated in SQL so a listing is one round trip, not one per row. */
-const tagsAgg = sql<string[]>`coalesce(
+export const tagsAgg = sql<string[]>`coalesce(
   (select array_agg(t.tag order by t.position, t.tag)
      from ${applicationTags} t
-    where t.application_id = ${applications.id}),
+    where t.application_id = ${applications}."id"),
   '{}'
 )`;
 
 const tagsText = sql`coalesce(
   (select string_agg(t.tag, ', ' order by t.position, t.tag)
      from ${applicationTags} t
-    where t.application_id = ${applications.id}),
+    where t.application_id = ${applications}."id"),
   ''
 )`;
 
@@ -63,7 +63,7 @@ function orderBy(field: SortField, direction: SortDirection) {
 }
 
 /** Matches the prototype's single search box: company, position, stack, place, notes. */
-function searchFilter(term: string) {
+export function searchFilter(term: string) {
   const like = `%${term}%`;
   return or(
     ilike(applications.company, like),
@@ -82,12 +82,37 @@ function searchFilter(term: string) {
   );
 }
 
+/**
+ * Which half of the register a listing reads.
+ *
+ * "open" is the default everywhere, and it is the whole point of the archive:
+ * a docket that keeps showing the companies that already said no is a list of
+ * disappointments, not a register of what is still in play. Nothing is deleted
+ * to achieve it — `rejected` reads the same rows back.
+ */
+export type EntryFilter = "open" | "rejected" | "all";
+
+export function filterClause(filter: EntryFilter) {
+  if (filter === "open") return isNull(applications.rejectedAt);
+  if (filter === "rejected") return isNotNull(applications.rejectedAt);
+  return undefined;
+}
+
 export async function listEntries(
   scope: Scope,
-  options: { search?: string; sort?: SortField; direction?: SortDirection } = {},
+  options: {
+    search?: string;
+    sort?: SortField;
+    direction?: SortDirection;
+    filter?: EntryFilter;
+  } = {},
 ): Promise<Entry[]> {
   const term = options.search?.trim();
-  const where = scope.owned(applications.userId, term ? searchFilter(term) : undefined);
+  const where = scope.owned(
+    applications.userId,
+    term ? searchFilter(term) : undefined,
+    filterClause(options.filter ?? "open"),
+  );
 
   const rows = await db
     .select({
@@ -113,7 +138,23 @@ export async function listEntries(
   return rows;
 }
 
-export async function getEntryCounts(scope: Scope): Promise<{ total: number; thisMonth: number }> {
+export type EntryCounts = {
+  /** Every entry ever stamped. The register is numbered, so this never falls. */
+  total: number;
+  thisMonth: number;
+  /** Still waiting on an answer — the rows the docket actually lists. */
+  open: number;
+  /** Filed in the archive. */
+  rejected: number;
+};
+
+/**
+ * The figures above the register count everything, including what is filed.
+ * A docket that reported a smaller total the day a company said no would be
+ * lying about how much work was done — the archive changes where an entry is
+ * read, never whether it happened.
+ */
+export async function getEntryCounts(scope: Scope): Promise<EntryCounts> {
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
@@ -122,11 +163,20 @@ export async function getEntryCounts(scope: Scope): Promise<{ total: number; thi
     .select({
       total: count(),
       thisMonth: sql<number>`count(*) filter (where ${applications.createdAt} >= ${startOfMonth.toISOString()})`,
+      rejected: sql<number>`count(*) filter (where ${applications.rejectedAt} is not null)`,
     })
     .from(applications)
     .where(scope.owned(applications.userId));
 
-  return { total: Number(totals?.total ?? 0), thisMonth: Number(totals?.thisMonth ?? 0) };
+  const total = Number(totals?.total ?? 0);
+  const rejected = Number(totals?.rejected ?? 0);
+
+  return {
+    total,
+    thisMonth: Number(totals?.thisMonth ?? 0),
+    open: total - rejected,
+    rejected,
+  };
 }
 
 export type NewEntryInput = {

@@ -17,7 +17,7 @@ const responded = sql`exists (
   select 1
     from ${statusEvents} e
     join ${stages} s on s.id = e.stage_id
-   where e.application_id = ${applications.id}
+   where e.application_id = ${applications}."id"
      and s.kind <> 'start'
 )`;
 
@@ -26,7 +26,7 @@ const firstResponseAt = sql`(
   select min(e.occurred_at)
     from ${statusEvents} e
     join ${stages} s on s.id = e.stage_id
-   where e.application_id = ${applications.id}
+   where e.application_id = ${applications}."id"
      and s.kind <> 'start'
 )`;
 
@@ -142,7 +142,7 @@ export async function getFunnel(scope: Scope): Promise<Array<{ stage: string; n:
     .select({
       stage: stages.name,
       position: stages.position,
-      n: sql<number>`count(${applications.id})`,
+      n: sql<number>`count(${applications}."id")`,
     })
     .from(stages)
     .leftJoin(applications, eq(applications.stageId, stages.id))
