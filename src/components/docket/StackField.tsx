@@ -112,7 +112,10 @@ export function StackField({
       <label className="field-label" htmlFor={id}>
         Job description
         {label ?? (
-          <span className="field-hint">paste the ad — technologies become tags on their own</span>
+          <span className="field-hint">
+            Paste the ad here. Every technology in it becomes a tag on its own — add or remove any
+            of them.
+          </span>
         )}
       </label>
       <textarea
