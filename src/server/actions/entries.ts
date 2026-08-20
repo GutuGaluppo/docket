@@ -117,6 +117,10 @@ export async function removeEntry(input: unknown): Promise<ActionResult> {
   const removed = await deleteEntry(scope, parsed.data.id);
   if (!removed) return { ok: false, error: "Entry not found." };
 
+  // The row could have been read from any of the three: the register, the board
+  // or the archive. Removal is the one act that reaches all of them.
   revalidatePath("/docket");
+  revalidatePath("/board");
+  revalidatePath("/archive");
   return { ok: true };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 
 import type { BoardColumn, Stage } from "@/server/db/queries/board";
 import {
@@ -12,7 +13,13 @@ import {
 } from "@/server/actions/board";
 import { BoardCard } from "./BoardCard";
 
-export function Board({ columns }: { columns: BoardColumn[] }) {
+/**
+ * `filed` is the size of the archive, not a column count. The terminal column
+ * never holds cards any more — dropping one there files a rejection and the
+ * entry leaves the board — so the number under that column has to come from
+ * where the entries actually went, or it would read 0 forever.
+ */
+export function Board({ columns, filed }: { columns: BoardColumn[]; filed: number }) {
   const [pending, startTransition] = useTransition();
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -50,7 +57,7 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
       </div>
 
       {/* The board scrolls sideways on its own; the page never does. */}
-      <div className="-mx-5 overflow-x-auto px-5 pb-3">
+      <div className="bleed overflow-x-auto pb-3">
         <div className="flex min-w-max items-start gap-4">
           {columns.map((column, index) => (
             <section
@@ -89,7 +96,9 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
                 ) : (
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="eyebrow text-ink">{column.stage.name}</h2>
-                    <span className="font-mono text-xs text-muted">{column.cards.length}</span>
+                    <span className="font-mono text-xs text-muted">
+                      {column.stage.kind === "lost" ? filed : column.cards.length}
+                    </span>
                   </div>
                 )}
 
@@ -148,20 +157,32 @@ export function Board({ columns }: { columns: BoardColumn[] }) {
               </header>
 
               <div className="flex min-h-24 flex-col gap-2">
-                {column.cards.length === 0 ? (
-                  <p className="py-6 text-center font-mono text-[11px] text-faint">
-                    Drop an entry here
+                {column.stage.kind === "lost" && (
+                  <p className="py-4 text-center font-mono text-[11px] leading-relaxed text-faint">
+                    Drop an entry here to file it as rejected.
+                    <br />
+                    <Link href="/archive" className="text-muted underline underline-offset-4">
+                      Open the archive
+                    </Link>
                   </p>
-                ) : (
-                  column.cards.map((card) => (
-                    <BoardCard
-                      key={card.id}
-                      card={card}
-                      stages={stages as Stage[]}
-                      currentStageId={column.stage.id}
-                    />
-                  ))
                 )}
+                {/* Cards can still be sitting in the terminal column from before
+                    the archive existed. They are shown, not hidden, until they
+                    are filed or moved. */}
+                {column.cards.length === 0
+                  ? column.stage.kind !== "lost" && (
+                      <p className="py-6 text-center font-mono text-[11px] text-faint">
+                        Drop an entry here
+                      </p>
+                    )
+                  : column.cards.map((card) => (
+                      <BoardCard
+                        key={card.id}
+                        card={card}
+                        stages={stages as Stage[]}
+                        currentStageId={column.stage.id}
+                      />
+                    ))}
               </div>
             </section>
           ))}

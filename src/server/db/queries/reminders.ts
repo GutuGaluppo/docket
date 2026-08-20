@@ -76,6 +76,10 @@ export async function findDueReminders(limit = 500): Promise<DueBatch[]> {
           : []),
         // Still untouched: either in a start column, or never assigned one.
         or(eq(stages.kind, "start"), isNull(applications.stageId)),
+        // Never nudge about an application that has already been refused. The
+        // answer arrived; a reminder to chase it would be the cruellest
+        // possible email this product could send.
+        isNull(applications.rejectedAt),
         sql`${applications.createdAt} <= now() - make_interval(days => ${users.followUpDays})`,
         notExists(
           db

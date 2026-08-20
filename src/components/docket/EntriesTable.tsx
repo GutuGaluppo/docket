@@ -5,6 +5,7 @@ import type { Entry, SortDirection, SortField } from "@/server/db/queries/applic
 import { elapsed, protocolNumber } from "@/lib/format";
 import { CompanyLogo } from "./CompanyLogo";
 import { DeleteEntryButton } from "./DeleteEntryButton";
+import { RejectionButton } from "./RejectionButton";
 import { Stamp } from "./Stamp";
 
 type Sort = { field: SortField; direction: SortDirection };
@@ -107,10 +108,11 @@ export function EntriesTable({
                 </span>
               </td>
               <td data-label="Actions">
-                <span className="flex flex-wrap items-center gap-3">
+                <span className="flex flex-wrap items-start gap-3">
                   <Link href={`/docket/${entry.id}/edit`} className="link-quiet">
                     Edit
                   </Link>
+                  <RejectionButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
                   <DeleteEntryButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
                 </span>
               </td>

@@ -192,6 +192,25 @@ export const applications = pgTable(
      * even when the person reads it later from another country.
      */
     timezone: text("timezone"),
+    /**
+     * When the refusal was filed. Null is the register's ordinary state — an
+     * application still waiting on an answer — and every listing that means
+     * "still in play" reads this one column.
+     *
+     * A rejection is filed, never deleted: the entry keeps its number, its
+     * stamp and its history, and only stops appearing where open applications
+     * are counted.
+     */
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    /**
+     * The column the process had reached when the refusal came, copied by name
+     * for the reason status_events copies it: the archive has to keep reading
+     * correctly after that column is renamed or removed. It is what separates
+     * "they never replied" from "they said no after three interviews".
+     */
+    rejectedAtStage: text("rejected_at_stage"),
+    /** What the refusal said, when it said anything. Cleared if the entry reopens. */
+    rejectionNote: text("rejection_note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -200,6 +219,7 @@ export const applications = pgTable(
     index("applications_user_company_idx").on(t.userId, t.company),
     uniqueIndex("applications_user_protocol_idx").on(t.userId, t.protocolNumber),
     index("applications_stage_idx").on(t.stageId),
+    index("applications_user_rejected_idx").on(t.userId, t.rejectedAt.desc()),
   ],
 );
 

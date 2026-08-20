@@ -21,6 +21,10 @@ export type AccountExport = {
     tags: string[];
     jobDescription: string | null;
     createdAt: string;
+    /** Null unless the application was filed in the rejection archive. */
+    rejectedAt: string | null;
+    rejectedAtStage: string | null;
+    rejectionNote: string | null;
     history: Array<{ stage: string; occurredAt: string; note: string | null }>;
   }>;
 };
@@ -52,10 +56,13 @@ export async function exportAccount(scope: Scope): Promise<AccountExport> {
       stage: sql<string | null>`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
       jobDescription: applications.jobDescription,
       createdAt: applications.createdAt,
+      rejectedAt: applications.rejectedAt,
+      rejectedAtStage: applications.rejectedAtStage,
+      rejectionNote: applications.rejectionNote,
       tags: sql<string[]>`coalesce(
         (select array_agg(t.tag order by t.position, t.tag)
            from ${applicationTags} t
-          where t.application_id = ${applications.id}),
+          where t.application_id = ${applications}."id"),
         '{}'
       )`,
       history: sql<Array<{ stage: string; occurredAt: string; note: string | null }>>`coalesce(
@@ -65,7 +72,7 @@ export async function exportAccount(scope: Scope): Promise<AccountExport> {
                   'note', e.note
                 ) order by e.occurred_at)
            from ${statusEvents} e
-          where e.application_id = ${applications.id}),
+          where e.application_id = ${applications}."id"),
         '[]'::json
       )`,
     })
@@ -84,6 +91,7 @@ export async function exportAccount(scope: Scope): Promise<AccountExport> {
     entries: rows.map((row) => ({
       ...row,
       createdAt: row.createdAt.toISOString(),
+      rejectedAt: row.rejectedAt?.toISOString() ?? null,
       history: row.history ?? [],
       tags: row.tags ?? [],
     })),

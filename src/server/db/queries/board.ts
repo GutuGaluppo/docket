@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { applications, applicationTags, interviews, stages, statusEvents } from "@/server/db/schema";
@@ -13,6 +13,7 @@ import type { Scope } from "./scope";
  */
 export type { Stage, StageKind } from "@/server/db/schema";
 import type { Stage } from "@/server/db/schema";
+import { fileRejection } from "./rejections";
 import { ensureStages } from "./stages";
 
 export type BoardCard = {
@@ -36,19 +37,24 @@ export type BoardColumn = { stage: Stage; cards: BoardCard[] };
 const tagsAgg = sql<string[]>`coalesce(
   (select array_agg(t.tag order by t.position, t.tag)
      from ${applicationTags} t
-    where t.application_id = ${applications.id}),
+    where t.application_id = ${applications}."id"),
   '{}'
 )`;
 
+/** Qualified deliberately — see the note in rejections.ts and correlated.test.ts. */
 const nextInterview = sql<Date | null>`(
   select min(i.starts_at) from ${interviews} i
-   where i.application_id = ${applications.id} and i.starts_at >= now()
+   where i.application_id = ${applications}."id" and i.starts_at >= now()
 )`;
 
 /**
  * The whole board in two queries. Cards whose stage was never set — entries
  * stamped before the board existed — fall into the first column rather than
  * disappearing.
+ *
+ * Filed rejections are not on the board. Proceedings are what is still moving;
+ * an application that has been refused has stopped, and it is read in the
+ * archive instead.
  */
 export async function getBoard(scope: Scope): Promise<BoardColumn[]> {
   const columns = await ensureStages(scope);
@@ -70,7 +76,7 @@ export async function getBoard(scope: Scope): Promise<BoardColumn[]> {
       nextInterviewAt: nextInterview,
     })
     .from(applications)
-    .where(scope.owned(applications.userId))
+    .where(scope.owned(applications.userId, isNull(applications.rejectedAt)))
     .orderBy(asc(applications.protocolNumber));
 
   return columns.map((stage) => ({
@@ -90,14 +96,24 @@ export async function moveCard(
   scope: Scope,
   applicationId: string,
   stageId: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<{ ok: true; filed?: boolean } | { ok: false; reason: string }> {
   const [stage] = await db
-    .select({ id: stages.id, name: stages.name })
+    .select({ id: stages.id, name: stages.name, kind: stages.kind })
     .from(stages)
     .where(scope.owned(stages.userId, eq(stages.id, stageId)))
     .limit(1);
 
   if (!stage) return { ok: false, reason: "That column does not exist." };
+
+  // The terminal column is the mouth of the archive, not a parking space. There
+  // is one way for an application to end in a refusal, and dragging a card into
+  // the last column is it — otherwise the board and the archive would disagree
+  // about the same entry depending on which screen was used to close it.
+  if (stage.kind === "lost") {
+    const filed = await fileRejection(scope, applicationId, null);
+    if (!filed.ok) return { ok: false, reason: filed.reason };
+    return { ok: true, filed: true };
+  }
 
   const updated = await db
     .update(applications)
@@ -124,7 +140,7 @@ export async function getBoardCounts(scope: Scope): Promise<Map<string, number>>
   const rows = await db
     .select({ stageId: applications.stageId, n: sql<number>`count(*)` })
     .from(applications)
-    .where(scope.owned(applications.userId))
+    .where(scope.owned(applications.userId, isNull(applications.rejectedAt)))
     .groupBy(applications.stageId);
 
   const counts = new Map<string, number>();

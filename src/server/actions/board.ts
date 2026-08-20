@@ -46,7 +46,12 @@ export async function moveApplication(input: unknown): Promise<BoardResult> {
 
   revalidatePath("/board");
   revalidatePath("/docket");
-  return { ok: true };
+  if (!result.filed) return { ok: true };
+
+  // The card is about to disappear from under the cursor that dropped it, so
+  // the move says where it went.
+  revalidatePath("/archive");
+  return { ok: true, message: "Filed as rejected. It is in the archive now." };
 }
 
 export async function addStage(input: unknown): Promise<BoardResult> {
