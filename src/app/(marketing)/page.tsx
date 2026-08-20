@@ -4,12 +4,13 @@ import { headers } from "next/headers";
 
 import { HeroDetector } from "@/components/marketing/HeroDetector";
 import { Reveal } from "@/components/marketing/Reveal";
+import { StepArt, type Step } from "@/components/marketing/StepArt";
 import { Track } from "@/components/analytics/Track";
 import { EVENTS } from "@/lib/analytics/events";
 import { priceFor } from "@/lib/pricing";
 
 const DESCRIPTION =
-  "A numbered register of the jobs you applied for. Paste the ad, the technologies become tags, and the date and time stamp themselves. Export or delete everything whenever you want.";
+  "A numbered register of the jobs you applied for. Drop the job link and we track the rest: every application gets its own number, date, time and the tech stack, tagged automatically. Export or delete everything whenever you want.";
 
 export const metadata: Metadata = {
   // `absolute` opts out of the root layout's "%s · Docket" template, which
@@ -22,18 +23,21 @@ export const metadata: Metadata = {
 /** One label, three places. Changing it here changes it everywhere. */
 const CTA = "Start your docket";
 
-const STEPS = [
+const STEPS: ReadonlyArray<{ art: Step; title: string; body: string }> = [
   {
-    title: "Paste the ad",
-    body: "The whole thing, straight from the tab you already have open. No fields to fill in first.",
+    art: "link",
+    title: "Drop the job link",
+    body: "Straight from the tab you already have open. We read the ad and fill the fields — company, role, city — so there is nothing to type first.",
   },
   {
+    art: "tags",
     title: "Check the tags",
     body: "About a hundred technologies are recognised by name and by nickname. Remove what does not belong, add what was missed.",
   },
   {
+    art: "stamp",
     title: "Stamp it",
-    body: "The entry gets the next number in your register and a stamp with the local date and time. That part is not editable.",
+    body: "The entry takes the next number in your register and a stamp with the local date and time. That part is never editable.",
   },
 ];
 
@@ -129,9 +133,10 @@ export default async function LandingPage() {
           <h1 className="text-[clamp(var(--text-3xl),6.5vw,var(--text-6xl))] leading-[0.98] font-bold tracking-[-0.03em] text-balance">
             Every application you send, on the record.
           </h1>
-          <p className="max-w-[46ch] text-md text-muted">
-            Each entry gets a number and a stamp with the local date and time it was sent. Paste the
-            ad and the technologies become tags on their own.
+          <p className="max-w-[48ch] text-md text-muted">
+            <b className="font-semibold text-ink">Drop the job link. We track the rest.</b> Every
+            application gets its own number, date, time — and the tech stack, tagged automatically.
+            No spreadsheets, no manual work. Just a simple list of everywhere you&rsquo;ve applied.
           </p>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -178,16 +183,31 @@ export default async function LandingPage() {
       <Reveal>
         <section className="border-b border-rule py-14">
           <p className="eyebrow mb-2 text-stamp">How it works</p>
-          <h2 className="mb-8 text-2xl font-bold tracking-[-0.015em]">
+          <h2 className="mb-3 text-[clamp(var(--text-2xl),4vw,var(--text-4xl))] leading-tight font-bold tracking-[-0.02em]">
             Three steps, in this order
           </h2>
-          <ol className="grid list-none gap-8 p-0 sm:grid-cols-3">
+          <p className="mb-10 max-w-[54ch] text-md text-muted">
+            From the tab you already have open to a numbered line in your register. Nothing in
+            between gets typed twice.
+          </p>
+
+          {/* Each step is a card with its own number tacked to the top edge, so
+              the sequence is readable at a glance instead of being three
+              paragraphs that happen to sit side by side. */}
+          <ol className="grid list-none gap-5 p-0 sm:grid-cols-3">
             {STEPS.map((step, index) => (
-              <li key={step.title} className="flex flex-col gap-2">
-                <span className="font-mono text-[13px] font-bold tracking-[0.06em] text-stamp">
+              <li
+                key={step.title}
+                className="relative flex flex-col gap-3 rounded-[3px] border border-rule bg-card p-6 pt-7 shadow-paper"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-3 left-6 rounded-[2px] border border-stamp bg-card px-2 py-0.5 font-mono text-[11px] font-bold tracking-[0.12em] text-stamp"
+                >
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="text-md font-semibold">{step.title}</h3>
+                <StepArt step={step.art} />
+                <h3 className="text-lg font-bold tracking-[-0.01em]">{step.title}</h3>
                 <p className="text-sm text-muted">{step.body}</p>
               </li>
             ))}
@@ -304,7 +324,7 @@ export default async function LandingPage() {
                 <li>Multiple boards, and a PDF report</li>
               </ul>
               <p className="mt-auto font-mono text-xs text-stamp">
-                14 days of Pro, no card asked for.
+                7 days of Pro, no card asked for.
               </p>
             </div>
           </div>
