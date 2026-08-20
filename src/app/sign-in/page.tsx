@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { ProviderMark } from "@/components/auth/ProviderMark";
 import { Track } from "@/components/analytics/Track";
 import { EVENTS } from "@/lib/analytics/events";
 import { auth, configuredProviders, signIn } from "@/auth";
@@ -49,7 +50,8 @@ export default async function SignInPage({
                 await signIn(provider.id, { redirectTo: target });
               }}
             >
-              <button type="submit" className="btn w-full" suppressHydrationWarning>
+              <button type="submit" className="btn btn-provider w-full" suppressHydrationWarning>
+                <ProviderMark provider={provider.id} />
                 {PROVIDER_LABELS[provider.id] ?? `Continue with ${provider.name}`}
               </button>
             </form>
