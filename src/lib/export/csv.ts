@@ -1,53 +1,25 @@
-import { formatStamp, protocolNumber } from "@/lib/format";
+import { COLUMNS, type ExportEntry, exportFilename } from "./entries";
 
-export type CsvEntry = {
-  protocolNumber: number;
-  company: string;
-  website: string | null;
-  position: string;
-  tags: string[];
-  city: string | null;
-  country: string | null;
-  stage: string | null;
-  createdAt: Date;
-  timezone: string | null;
-  notes: string | null;
-};
-
-const HEADER = [
-  "No",
-  "Company",
-  "Website",
-  "Position",
-  "Stack",
-  "City",
-  "Country",
-  "Stage",
-  "Stamped at",
-  "Notes",
-] as const;
+/** Kept as the name the rest of the app already imports. */
+export type CsvEntry = ExportEntry;
 
 const cell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
-/** BOM included: spreadsheets still guess the encoding wrong without it. */
-export function toCsv(entries: readonly CsvEntry[]): string {
-  const lines = entries.map((entry) => {
-    const stamp = formatStamp(entry.createdAt, entry.timezone);
-    return [
-      protocolNumber(entry.protocolNumber),
-      entry.company,
-      entry.website ?? "",
-      entry.position,
-      entry.tags.join(" · "),
-      entry.city ?? "",
-      entry.country ?? "",
-      entry.stage ?? "",
-      `${stamp.date} ${stamp.time}`,
-      entry.notes ?? "",
-    ].map(cell);
-  });
+/**
+ * The portable format: every column quoted, every value a string.
+ *
+ * This is the one that has to survive being opened by something nobody here
+ * chose — a text editor, another tracker's importer, a script. It carries no
+ * types and no formatting on purpose. When the destination is known to be
+ * Excel, `toXlsx` is the better answer; this one stays boring.
+ *
+ * BOM included: spreadsheets still guess the encoding wrong without it.
+ */
+export function toCsv(entries: readonly ExportEntry[]): string {
+  const lines = entries.map((entry) => COLUMNS.map((column) => cell(column.value(entry))));
+  const header = COLUMNS.map((column) => cell(column.label));
 
-  return `\ufeff${[HEADER.map(cell), ...lines].map((line) => line.join(",")).join("\n")}`;
+  return `\ufeff${[header, ...lines].map((line) => line.join(",")).join("\n")}`;
 }
 
-export const csvFilename = (today = new Date()) => `docket-${today.toISOString().slice(0, 10)}.csv`;
+export const csvFilename = (today = new Date()) => exportFilename("csv", today);
