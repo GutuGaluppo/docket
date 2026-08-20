@@ -40,8 +40,11 @@ export function PostingImport({
   return (
     <div className="field col-span-full" suppressHydrationWarning>
       <label className="field-label" htmlFor="posting-link">
-        Link to the advert
-        <span className="field-hint">optional — fills the fields below for you to check</span>
+        Job link
+        <span className="field-hint">
+          Optional. You give us the link, we fill the fields below for you — read them before you
+          stamp.
+        </span>
       </label>
 
       <div className="flex flex-wrap items-end gap-2.5">

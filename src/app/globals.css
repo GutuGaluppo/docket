@@ -313,24 +313,31 @@
     gap: 6px;
   }
 
+  /* The name of the field, and the loudest thing in it. At the hint's size and
+     weight the two read as one run of small print, and the person scanning the
+     form has to parse a sentence to find out what the box is for. */
   .field-label {
-    font-size: 11px;
-    letter-spacing: 0.1em;
+    font-size: 13px;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    font-weight: 600;
-    color: var(--muted);
+    font-weight: 700;
+    color: var(--text);
     display: flex;
     align-items: baseline;
-    /* The hint moves to its own line as a unit instead of breaking mid-phrase. */
     flex-wrap: wrap;
     column-gap: 8px;
-    row-gap: 2px;
+    row-gap: 3px;
   }
 
-  /* Secondary text inside a label: "optional — brings the logo". */
+  /* What the field is for, on its own line — `flex-basis` forces the break, so
+     a description can be a full sentence without crowding the name it belongs
+     to. Short flags that qualify the name itself, like the "check" mark on a
+     field a link filled, stay on the first line. */
   .field-hint {
+    flex-basis: 100%;
     font-family: var(--font-mono);
     font-size: 11px;
+    line-height: 1.45;
     font-weight: 400;
     letter-spacing: 0.01em;
     text-transform: none;

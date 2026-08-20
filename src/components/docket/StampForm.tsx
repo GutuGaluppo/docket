@@ -195,7 +195,7 @@ export function StampForm() {
             {marked.includes("website") ? (
               <span className="mark-flag">check</span>
             ) : (
-              <span className="field-hint">optional — brings the logo</span>
+              <span className="field-hint">Optional. Adds the company logo.</span>
             )}
           </label>
           <input
@@ -245,7 +245,10 @@ export function StampForm() {
         <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="notes">
             Notes
-            <span className="field-hint">optional — recruiter, salary range, link to the ad</span>
+            <span className="field-hint">
+              Optional. Anything you will want to remember: who you spoke to, the salary range, how
+              you found it.
+            </span>
           </label>
           <textarea
             id="notes"
