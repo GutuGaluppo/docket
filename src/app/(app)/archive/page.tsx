@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { RejectionsTable } from "@/components/archive/RejectionsTable";
 import { FiguresSkeleton, TableSkeleton } from "@/components/Skeleton";
 import { doorRate } from "@/lib/rejection";
@@ -122,23 +123,16 @@ export default async function ArchivePage({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
-        <div>
-          <p className="eyebrow mb-1.5 text-stamp">Closed without an offer</p>
-          <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-            Archive
-          </h1>
-          <p className="mt-2 max-w-[52ch] text-sm text-muted">
-            Applications that ended in a refusal. Nothing here is deleted — each one keeps its
-            number, its stamp and its history, and reopens in one click if the answer changes.
-          </p>
-        </div>
-        <div className="flex gap-6 font-mono">
-          <Suspense fallback={<FiguresSkeleton count={3} label="the counters" />}>
-            <Figures counts={counts} />
-          </Suspense>
-        </div>
-      </header>
+      <SectionHeader
+        section="archive"
+        aside={
+          <div className="flex gap-6 font-mono">
+            <Suspense fallback={<FiguresSkeleton count={3} label="the counters" />}>
+              <Figures counts={counts} />
+            </Suspense>
+          </div>
+        }
+      />
 
       <Suspense fallback={null}>
         <DoorRate counts={counts} />

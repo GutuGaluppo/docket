@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fragment, Suspense } from "react";
 import Link from "next/link";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { EntriesTable } from "@/components/docket/EntriesTable";
 import { StampForm } from "@/components/docket/StampForm";
 import { Bar, FiguresSkeleton, Placeholder, TableSkeleton } from "@/components/Skeleton";
@@ -183,23 +184,16 @@ export default async function DocketPage({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
-        <div>
-          <p className="eyebrow mb-1.5 text-stamp">Personal register · kept by you</p>
-          <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-            Your docket
-          </h1>
-          <p className="mt-2 max-w-[46ch] text-sm text-muted">
-            Every application gets a number and a stamp with the local date and time it was sent.
-            The ones that ended in a refusal are kept in the archive.
-          </p>
-        </div>
-        <div className="flex gap-6 font-mono">
-          <Suspense fallback={<FiguresSkeleton label="the counters" />}>
-            <Figures counts={counts} />
-          </Suspense>
-        </div>
-      </header>
+      <SectionHeader
+        section="docket"
+        aside={
+          <div className="flex gap-6 font-mono">
+            <Suspense fallback={<FiguresSkeleton label="the counters" />}>
+              <Figures counts={counts} />
+            </Suspense>
+          </div>
+        }
+      />
 
       <StampForm />
 

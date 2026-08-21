@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 import { EditEntryForm } from "@/components/docket/EditEntryForm";
 import { Stamp } from "@/components/docket/Stamp";
-import { Bar, Placeholder } from "@/components/Skeleton";
+import { EntrySheetSkeleton } from "@/components/Skeleton";
 import { requireScope } from "@/server/auth/session";
 import { getEntry } from "@/server/db/queries/applications";
 
@@ -52,21 +52,7 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
         ← Back to the docket
       </Link>
 
-      <Suspense
-        fallback={
-          <Placeholder label="the entry" className="mt-4 flex flex-col gap-5">
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div className="flex flex-col gap-2">
-                <Bar className="h-2.5 w-16" />
-                <Bar className="h-8 w-56" />
-                <Bar className="h-3 w-40" />
-              </div>
-              <Bar className="h-12 w-28" />
-            </div>
-            <Bar className="h-64 w-full" />
-          </Placeholder>
-        }
-      >
+      <Suspense fallback={<EntrySheetSkeleton />}>
         <Sheet id={id} />
       </Suspense>
     </main>

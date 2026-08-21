@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { ProNotice } from "@/components/billing/ProNotice";
 import { RateTable } from "@/components/analytics/RateTable";
-import { Bar, Placeholder } from "@/components/Skeleton";
+import { FindingsSkeleton } from "@/components/Skeleton";
 import { canUseAnalytics } from "@/server/billing/limits";
 import { requireScope } from "@/server/auth/session";
 import {
@@ -29,28 +30,6 @@ function Figure({ value, label, hint }: { value: string; label: string; hint?: s
       <span className="font-mono text-[10px] tracking-[0.14em] text-muted uppercase">{label}</span>
       {hint && <span className="text-xs text-faint">{hint}</span>}
     </div>
-  );
-}
-
-/** Four figures and two tables' worth of ruled space, at their real weights. */
-function FindingsSkeleton() {
-  return (
-    <Placeholder label="the findings" className="mt-6 flex flex-col gap-10">
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="flex flex-col gap-2 border-t border-rule pt-3">
-            <Bar className="h-7 w-16" />
-            <Bar className="h-2 w-24" />
-          </div>
-        ))}
-      </section>
-      <section className="flex flex-col gap-3">
-        <Bar className="h-2 w-28" />
-        {Array.from({ length: 5 }, (_, index) => (
-          <Bar key={index} className="h-6 w-full" />
-        ))}
-      </section>
-    </Placeholder>
   );
 }
 
@@ -197,18 +176,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
-        <div>
-          <p className="eyebrow mb-1.5 text-stamp">Findings</p>
-          <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-            Analytics
-          </h1>
-          <p className="mt-2 max-w-[54ch] text-sm text-muted">
-            What the register says once there is enough of it. An entry counts as answered when it
-            leaves the first column — the moment someone on the other side did something.
-          </p>
-        </div>
-      </header>
+      <SectionHeader section="analytics" />
 
       <Suspense fallback={<FindingsSkeleton />}>
         <Findings report={report} />

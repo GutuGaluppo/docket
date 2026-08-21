@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { ImportForm } from "@/components/docket/ImportForm";
 
 export const metadata: Metadata = { title: "Import" };
@@ -8,16 +9,7 @@ export const metadata: Metadata = { title: "Import" };
 export default function ImportPage() {
   return (
     <>
-      <header className="border-b-2 border-ink pb-4">
-        <p className="eyebrow mb-1.5 text-stamp">Transfer of records</p>
-        <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-          Import
-        </h1>
-        <p className="mt-2 max-w-[52ch] text-sm text-muted">
-          Bring in the CSV or JSON you exported from the prototype, from a spreadsheet, or from
-          Docket itself. Company and position are required; everything else is optional.
-        </p>
-      </header>
+      <SectionHeader section="import" />
 
       <ImportForm />
 

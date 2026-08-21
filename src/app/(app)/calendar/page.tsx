@@ -3,10 +3,11 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { headers } from "next/headers";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { MonthGrid } from "@/components/calendar/MonthGrid";
 import { ScheduleForm } from "@/components/calendar/ScheduleForm";
 import { SubscribeCard } from "@/components/calendar/SubscribeCard";
-import { Bar, Placeholder } from "@/components/Skeleton";
+import { Bar, MonthSkeleton, Placeholder } from "@/components/Skeleton";
 import { requireScope } from "@/server/auth/session";
 import {
   getOrCreateCalendarToken,
@@ -57,17 +58,6 @@ async function Subscribe({ feedUrl }: { feedUrl: Promise<string> }) {
   return <SubscribeCard feedUrl={await feedUrl} />;
 }
 
-/** Six weeks of seven cells — the grid's real shape, so the page does not jump. */
-function MonthSkeleton() {
-  return (
-    <Placeholder label="the month" className="grid grid-cols-7 gap-px">
-      {Array.from({ length: 42 }, (_, index) => (
-        <Bar key={index} className="h-16 w-full rounded-none opacity-70" />
-      ))}
-    </Placeholder>
-  );
-}
-
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -109,29 +99,22 @@ export default async function CalendarPage({
 
   return (
     <>
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
-        <div>
-          <p className="eyebrow mb-1.5 text-stamp">Hearings</p>
-          <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-            Calendar
-          </h1>
-          <p className="mt-2 max-w-[52ch] text-sm text-muted">
-            The days you have to show up for. Subscribe once and every interview lands in Apple
-            Calendar or Google Calendar with the alert you set.
-          </p>
-        </div>
-        {/* The month and its arrows come from the query string, not the
-            database, so the calendar can be paged before anything has loaded. */}
-        <nav className="flex items-center gap-4 font-mono text-xs">
-          <Link href={{ pathname: "/calendar", query: { m: monthParam(shift(month, -1)) } }}>
-            ← Prev
-          </Link>
-          <span className="tracking-[0.08em] text-muted uppercase">{monthLabel}</span>
-          <Link href={{ pathname: "/calendar", query: { m: monthParam(shift(month, 1)) } }}>
-            Next →
-          </Link>
-        </nav>
-      </header>
+      {/* The month and its arrows come from the query string, not the
+          database, so the calendar can be paged before anything has loaded. */}
+      <SectionHeader
+        section="calendar"
+        aside={
+          <nav className="flex items-center gap-4 font-mono text-xs">
+            <Link href={{ pathname: "/calendar", query: { m: monthParam(shift(month, -1)) } }}>
+              ← Prev
+            </Link>
+            <span className="tracking-[0.08em] text-muted uppercase">{monthLabel}</span>
+            <Link href={{ pathname: "/calendar", query: { m: monthParam(shift(month, 1)) } }}>
+              Next →
+            </Link>
+          </nav>
+        }
+      />
 
       <div className="mt-6 flex flex-col gap-6">
         <Suspense
@@ -151,9 +134,9 @@ export default async function CalendarPage({
 
         <Suspense
           fallback={
-            <Placeholder label="the subscription link" className="flex flex-col gap-3">
-              <Bar className="h-3 w-40" />
-              <Bar className="h-9 w-full" />
+            <Placeholder label="the subscription link" className="flex items-center gap-3">
+              <Bar className="h-9 w-44" />
+              <Bar className="h-3 w-56" />
             </Placeholder>
           }
         >

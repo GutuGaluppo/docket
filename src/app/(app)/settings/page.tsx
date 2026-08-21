@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { SectionHeader } from "@/components/SectionHeader";
 import { DeleteAccountForm } from "@/components/settings/DeleteAccountForm";
 import { FollowUpSettings } from "@/components/settings/FollowUpSettings";
 import { ProNotice } from "@/components/billing/ProNotice";
@@ -68,12 +69,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <header className="border-b-2 border-ink pb-4">
-        <p className="eyebrow mb-1.5 text-stamp">Account</p>
-        <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-          Settings
-        </h1>
-      </header>
+      <SectionHeader section="settings" />
 
       <section className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper">
         <p className="eyebrow mb-4 text-muted">Identity</p>

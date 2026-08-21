@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 /**
@@ -34,6 +34,36 @@ export function isCurrent(pathname: string, href: string): boolean {
   return owned && !TABS.some((tab) => tab.href !== href && pathname.startsWith(tab.href));
 }
 
+/**
+ * The tab answers the click, not the server.
+ *
+ * A navigation to a section that has to be rendered on demand takes as long as
+ * it takes — the point of the boundaries inside each page — but the person who
+ * clicked cannot be left wondering whether the click registered. `useLinkStatus`
+ * reports the pending state of the link it is rendered inside, from the moment
+ * of the click and before any request goes out, so the acknowledgement costs a
+ * round trip of nothing.
+ *
+ * The bar is drawn along the tab's own bottom edge. With animation off — the
+ * reduced-motion block in `globals.css` turns it off wholesale — it stays as a
+ * full, still bar, which says the same thing without moving.
+ */
+function TabLabel({ label }: { label: string }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      {label}
+      {pending && (
+        <>
+          <span aria-hidden="true" className="tab-progress" />
+          <span className="sr-only">, loading</span>
+        </>
+      )}
+    </>
+  );
+}
+
 export function CabinetTabs() {
   const pathname = usePathname();
 
@@ -48,7 +78,7 @@ export function CabinetTabs() {
             className="tab"
             aria-current={current ? "page" : undefined}
           >
-            {tab.label}
+            <TabLabel label={tab.label} />
           </Link>
         );
       })}

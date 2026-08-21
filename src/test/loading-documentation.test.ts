@@ -69,6 +69,16 @@ describe("docs/loading.md", () => {
     });
   }
 
+  for (const row of table) {
+    it(`${row.section}: has a loading boundary beside it`, () => {
+      const loading = join(root, row.page.replace(/page\.tsx$/, "loading.tsx"));
+      expect(
+        existsSync(loading),
+        `${row.section} has no loading.tsx, so a click on it shows the previous section — or, worse, the boundary of the segment above`,
+      ).toBe(true);
+    });
+  }
+
   /**
    * The page component's own body, from `export default` to the first line that
    * is a bare closing brace. Cutting there keeps the check off the async
