@@ -61,6 +61,7 @@ src/
     api/            auth callbacks, POST /api/import
     sign-in/
   components/
+    shell/          the sidebar and the bar above the page
     docket/         Stamp, StampForm, EntriesTable, CityField, CompanyLogo
     archive/        the rejection archive: RejectionsTable, ReopenButton
     settings/

@@ -104,13 +104,9 @@
 
   /* The furniture. Structure, never ornament: no accent colour lives here, and
      nothing in it competes with the stamp. */
-  --cabinet: var(--steel-300);
-  --cabinet-edge: var(--steel-500);
-  --cabinet-sheen: var(--steel-100);
   /* The folder is a hair above the ground it stands on, so its edge is legible
      without lifting it to the level of the cards it holds. */
   --folder: color-mix(in oklab, var(--surface) 22%, var(--ground));
-  --tab: color-mix(in oklab, var(--cabinet) 45%, var(--folder));
 }
 
 /* Unstamped documents follow the OS; an explicit light choice still wins. */
@@ -143,11 +139,7 @@
 
     --paper-shadow: 3px 3px 0 rgb(0 0 0 / 0.32);
 
-    --cabinet: var(--carbon-700);
-    --cabinet-edge: #0f0e0b;
-    --cabinet-sheen: var(--carbon-500);
     --folder: color-mix(in oklab, var(--surface) 40%, var(--ground));
-    --tab: color-mix(in oklab, var(--cabinet) 55%, var(--folder));
   }
 }
 
@@ -180,11 +172,7 @@
 
   --paper-shadow: 3px 3px 0 rgb(0 0 0 / 0.32);
 
-  --cabinet: var(--carbon-700);
-  --cabinet-edge: #0f0e0b;
-  --cabinet-sheen: var(--carbon-500);
   --folder: color-mix(in oklab, var(--surface) 40%, var(--ground));
-  --tab: color-mix(in oklab, var(--cabinet) 55%, var(--folder));
 }
 
 /* ===========================================================================
@@ -212,7 +200,6 @@
   --color-flag-wash: var(--danger-wash);
 
   --color-folder: var(--folder);
-  --color-cabinet: var(--cabinet);
 
   --color-mark: var(--mark);
   --color-mark-ink: var(--mark-ink);
@@ -575,10 +562,9 @@
       outline-offset: -2px;
     }
 
-    /* The forward tab is told apart by a painted-out edge, and a forced palette
-       repaints it. Say which tab is forward in a way the palette cannot undo. */
-    .tab[aria-current="page"] {
-      border-bottom-color: Canvas;
+    /* The section you are in is told apart by a tint, and a forced palette
+       repaints tints. Say which one it is in a way the palette cannot undo. */
+    .nav-item[aria-current="page"] {
       outline: 2px solid Highlight;
       outline-offset: -2px;
     }
@@ -694,133 +680,166 @@
   }
 
   /* -------------------------------------------------------------------------
-     The cabinet.
+     The shell.
 
-     A docket is a thing you file, so the shell it is filed in is drawn as the
-     drawer: a steel frame, folder tabs along its top edge, and the page itself
-     as the folder standing open. The metaphor is load-bearing rather than
-     decorative — the tab that is forward is the section you are in, and the
-     page is inside it, which is the same sentence the navigation was already
-     trying to say.
+     A sidebar and a page beside it. The list of sections is vertical because
+     that is the shape that can hold groups and keep growing: a row of tabs has
+     to choose between shrinking its labels and pushing a section out of sight,
+     and this register has seven of them.
 
-     It stays quiet on purpose. The metal carries no accent colour, sits behind
-     everything the register puts on the page, and the only violet in it is the
-     hairline on the forward tab. The stamp is still the one loud thing.
+     It stays quiet on purpose. The sidebar is one shade off the ground, carries
+     one hairline rule, and the only violet in it is on the section you are in.
+     The stamp is still the one loud thing on the page.
   ------------------------------------------------------------------------- */
-  .cabinet {
-    border: 1px solid var(--cabinet-edge);
-    border-radius: 4px;
-    background: var(--cabinet);
-    padding: 10px 10px 0;
-    box-shadow:
-      inset 0 1px 0 var(--cabinet-sheen),
-      var(--paper-shadow);
+  .shell {
+    --sidebar-w: 248px;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    min-height: 100dvh;
   }
 
-  /* The drawer pull. Nothing depends on it; it is the detail that settles which
-     piece of furniture this is meant to be. */
-  .cabinet::after {
-    content: "";
-    display: block;
-    width: 92px;
-    height: 5px;
-    margin: 12px auto 14px;
-    border-radius: 3px;
-    background: var(--cabinet-edge);
-    box-shadow: 0 1px 0 var(--cabinet-sheen);
+  .shell[data-rail="true"] {
+    --sidebar-w: 68px;
   }
 
-  /* Above the drawer: the label plate, and the controls that are not sections
-     of the register. */
-  .cabinet-head {
+  .sidebar {
+    position: sticky;
+    top: 0;
     display: flex;
-    flex-wrap: wrap;
+    height: 100dvh;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    border-right: 1px solid var(--rule);
+    background: var(--ground);
+    padding: 16px 12px 14px;
+  }
+
+  .sidebar-head {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 8px;
+    padding: 2px 4px 10px;
   }
 
-  .cabinet-plate {
+  .wordmark {
     display: inline-flex;
     align-items: center;
     gap: 9px;
-    border: 1px solid var(--cabinet-edge);
-    border-radius: 2px;
-    background: var(--cabinet);
-    padding: 5px 11px 4px;
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     text-decoration: none;
-    box-shadow: inset 0 1px 0 var(--cabinet-sheen);
   }
 
-  /* The plate is screwed to the drawer front. */
-  .cabinet-plate::before,
-  .cabinet-plate::after {
-    content: "";
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background: var(--cabinet-edge);
-    box-shadow: 0 1px 0 var(--cabinet-sheen);
+  .wordmark-mark {
+    display: grid;
+    height: 26px;
+    width: 26px;
+    place-items: center;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13px;
+    letter-spacing: 0;
   }
 
-  /* The tabs of the folders in the drawer. The strip scrolls rather than wraps:
-     a second row of tabs would have nothing behind it to be attached to. */
-  .tab-strip {
+  /* The one filled control in the sidebar. Everything else is a destination;
+     this is the thing the register exists to do. */
+  .new-entry {
     display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    padding-left: 10px;
-    /* Sits on the folder's top edge, so the forward tab can cover it. */
-    margin-bottom: -1px;
-    position: relative;
-    z-index: 1;
-    overflow-x: auto;
-    scrollbar-width: none;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 0 14px;
+    border: 1px solid var(--accent-edge);
+    border-radius: 7px;
+    background: var(--accent-wash);
+    padding: 9px 11px;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease;
   }
-  .tab-strip::-webkit-scrollbar {
-    display: none;
+  .new-entry:hover {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
   }
 
-  .tab {
-    position: relative;
-    flex: none;
-    border: 1px solid var(--rule);
-    border-radius: 5px 5px 0 0;
-    background: var(--tab);
-    padding: 7px 14px 6px;
-    color: var(--muted);
+  .sidebar-nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-group-label {
+    margin: 0 0 4px;
+    padding: 0 11px;
+    color: var(--faint);
     font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.12em;
+    font-size: 10px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
+  }
+
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 7px;
+    padding: 8px 11px;
+    color: var(--muted);
+    font-size: 14px;
     text-decoration: none;
-    white-space: nowrap;
     transition:
-      background 0.12s ease,
+      background-color 0.12s ease,
       color 0.12s ease;
   }
-
-  /* The click, acknowledged. Drawn on the tab's own bottom edge so it reads as
-     that tab loading rather than as a page-wide progress bar. */
-  .tab-progress {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 2px;
-    background: var(--accent);
-    transform-origin: left;
-    animation: tab-progress 1s ease-in-out infinite;
+  .nav-item:hover {
+    background: var(--raised);
+    color: var(--text);
+  }
+  .nav-item[aria-current="page"] {
+    background: var(--accent-wash);
+    color: var(--text);
+    font-weight: 600;
+  }
+  /* The marker for the section you are in. Inset rather than a bar outside the
+     item, so it cannot hang past the sidebar's edge when the sidebar becomes a
+     drawer that starts at x=0. */
+  .nav-item[aria-current="page"] {
+    box-shadow: inset 3px 0 0 var(--accent);
   }
 
-  @keyframes tab-progress {
+  /* Pending navigation, drawn under the item that was clicked. */
+  .nav-pending {
+    position: absolute;
+    right: 11px;
+    bottom: 6px;
+    left: 11px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform-origin: left;
+    animation: nav-pending 1s ease-in-out infinite;
+  }
+
+  @keyframes nav-pending {
     0% {
       transform: scaleX(0.05);
     }
@@ -833,60 +852,202 @@
     }
   }
 
-  .tab:hover {
-    background: var(--folder);
+  .sidebar-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--rule);
+    padding-top: 10px;
+  }
+
+  .sidebar-identity {
+    margin: 0;
+    overflow: hidden;
+    padding: 0 11px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 11px 2px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .icon-button {
+    display: grid;
+    height: 28px;
+    width: 28px;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--faint);
+    cursor: pointer;
+  }
+  .icon-button:hover {
+    background: var(--raised);
     color: var(--text);
   }
 
-  /* The folder standing open. Its tab is the same paper as the page below it,
-     and its bottom edge is painted out, so the two read as one surface. */
-  .tab[aria-current="page"] {
-    background: var(--folder);
-    border-bottom-color: var(--folder);
-    border-top: 2px solid var(--accent);
-    padding-top: 6px;
-    color: var(--text);
-    font-weight: 700;
+  /* Collapsed: icons only, and everything that was a word steps out. */
+  .shell[data-rail="true"] .nav-label,
+  .shell[data-rail="true"] .nav-group-label,
+  .shell[data-rail="true"] .sidebar-identity {
+    display: none;
+  }
+  .shell[data-rail="true"] .sidebar {
+    align-items: center;
+    padding-inline: 10px;
+  }
+  .shell[data-rail="true"] .nav-item,
+  .shell[data-rail="true"] .new-entry {
+    justify-content: center;
+    padding-inline: 10px;
+  }
+  .shell[data-rail="true"] .sidebar-controls {
+    flex-direction: column;
+    gap: 8px;
+    padding-inline: 0;
   }
 
-  .folder {
-    --folder-pad: 16px;
-    border: 1px solid var(--rule);
-    /* The first tab is inset from the corner, so every corner is rounded. */
-    border-radius: 3px;
-    background: var(--folder);
-    padding: 22px var(--folder-pad) 28px;
+  /* The page is the brightest surface in the window and the sidebar is the
+     ground it sits on — the same relationship the register has always had with
+     the paper it is written on. */
+  .main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    background: var(--surface);
   }
 
-  @media (min-width: 640px) {
-    .folder {
-      --folder-pad: 30px;
-      padding: 28px var(--folder-pad) 36px;
+  /* A thin bar that says where you are and, on a phone, opens the drawer. It
+     is translucent so the page scrolling under it stays visible as motion. */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    border-bottom: 1px solid var(--rule);
+    background: color-mix(in oklab, var(--surface) 86%, transparent);
+    padding-inline: var(--content-pad, 22px);
+    backdrop-filter: blur(10px);
+  }
+
+  .topbar-title {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .content {
+    --content-pad: 22px;
+    width: 100%;
+    max-width: 1180px;
+    padding: 30px var(--content-pad) 56px;
+  }
+
+  .content-footer {
+    padding: 0 var(--content-pad, 22px) 34px;
+  }
+
+  @media (min-width: 900px) {
+    .content {
+      --content-pad: 40px;
+      padding-top: 36px;
     }
   }
 
-  /* Something that has to reach the folder's edge — a board that scrolls
-     sideways — cancels the padding rather than guessing at it. Hard-coding the
-     number is how the board came to hang 4px outside the folder the first time
-     the shell's padding changed. */
+  /* Something that has to reach the page's edge — a board that scrolls
+     sideways — cancels the padding rather than guessing at it. */
   .bleed {
-    margin-inline: calc(var(--folder-pad, 20px) * -1);
-    padding-inline: var(--folder-pad, 20px);
+    margin-inline: calc(var(--content-pad, 22px) * -1);
+    padding-inline: var(--content-pad, 22px);
   }
 
-  /* On paper there is no drawer. */
-  @media print {
-    .cabinet,
-    .folder {
-      border: 0;
-      padding: 0;
-      background: none;
-      box-shadow: none;
+  .drawer-only {
+    display: none;
+  }
+
+  /* Under 900px the sidebar becomes a drawer: off canvas, over the page, and
+     gone again the moment a section is chosen. */
+  @media (max-width: 899px) {
+    .shell,
+    .shell[data-rail="true"] {
+      grid-template-columns: minmax(0, 1fr);
     }
-    .cabinet::after,
-    .cabinet-head,
-    .tab-strip {
+    .sidebar {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 272px;
+      transform: translateX(-100%);
+      box-shadow: var(--paper-shadow);
+      transition: transform 0.18s ease;
+    }
+    .sidebar[data-open="true"] {
+      transform: none;
+    }
+    .shell[data-rail="true"] .nav-label,
+    .shell[data-rail="true"] .nav-group-label,
+    .shell[data-rail="true"] .sidebar-identity {
+      display: revert;
+    }
+    .shell[data-rail="true"] .sidebar {
+      align-items: stretch;
+      padding-inline: 12px;
+    }
+    .shell[data-rail="true"] .nav-item,
+    .shell[data-rail="true"] .new-entry {
+      justify-content: flex-start;
+      padding-inline: 11px;
+    }
+    .rail-only-hide {
       display: none;
+    }
+    .drawer-only {
+      display: grid;
+    }
+    .scrim {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      border: 0;
+      background: color-mix(in oklab, var(--text) 42%, transparent);
+      cursor: pointer;
+    }
+  }
+
+  /* On paper there is no shell. */
+  @media print {
+    .sidebar,
+    .topbar,
+    .content-footer {
+      display: none;
+    }
+    .shell {
+      display: block;
+    }
+    .content {
+      max-width: none;
+      padding: 0;
     }
   }
 
