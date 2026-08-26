@@ -3,6 +3,7 @@
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
 import { resolvePosting } from "@/server/posting/resolve";
 import { createLimiter } from "@/server/rate-limit";
+import { POSTING_MESSAGES } from "@/lib/posting/messages";
 import type { PostingResult } from "@/lib/posting/types";
 
 /**
@@ -32,19 +33,19 @@ export async function draftFromLink(input: unknown): Promise<PostingResult> {
     scope = await requireScope();
   } catch (error) {
     if (error instanceof UnauthenticatedError) {
-      return { ok: false, reason: "blocked-host", message: "Sign in first." };
+      return { ok: false, reason: "blocked-host", message: POSTING_MESSAGES.signedOut };
     }
     throw error;
   }
 
   if (typeof input !== "string") {
-    return { ok: false, reason: "malformed", message: "Paste the link to the job advert." };
+    return { ok: false, reason: "malformed", message: POSTING_MESSAGES.empty };
   }
   if (input.length > 2_000) {
-    return { ok: false, reason: "malformed", message: "That link is too long to be real." };
+    return { ok: false, reason: "malformed", message: POSTING_MESSAGES.tooLong };
   }
   if (limiter.exceeded(scope.userId)) {
-    return { ok: false, reason: "unreachable", message: "One link at a time — try again shortly." };
+    return { ok: false, reason: "unreachable", message: POSTING_MESSAGES.throttled };
   }
 
   return await resolvePosting(input);

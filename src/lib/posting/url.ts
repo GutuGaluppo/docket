@@ -1,3 +1,4 @@
+import { POSTING_MESSAGES, blockedHostMessage } from "./messages";
 import { isBlockedAddress } from "./net";
 import type { PostingFailure } from "./types";
 
@@ -42,18 +43,18 @@ export function blockedHost(hostname: string): string | null {
 export function inspectPostingUrl(raw: string): UrlVerdict {
   const value = raw.trim();
   if (!value) {
-    return { ok: false, reason: "empty", message: "Paste the link to the job advert." };
+    return { ok: false, reason: "empty", message: POSTING_MESSAGES.empty };
   }
 
   let url: URL;
   try {
     url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`);
   } catch {
-    return { ok: false, reason: "malformed", message: "That does not look like a link." };
+    return { ok: false, reason: "malformed", message: POSTING_MESSAGES.malformed };
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return { ok: false, reason: "scheme", message: "Only http and https links can be read." };
+    return { ok: false, reason: "scheme", message: POSTING_MESSAGES.scheme };
   }
 
   // A literal address skips DNS entirely, so it has to be judged here.
@@ -63,7 +64,7 @@ export function inspectPostingUrl(raw: string): UrlVerdict {
       return {
         ok: false,
         reason: "private-host",
-        message: "That address is on a private network. Paste a public link.",
+        message: POSTING_MESSAGES.privateAddress,
       };
     }
   }
@@ -73,7 +74,7 @@ export function inspectPostingUrl(raw: string): UrlVerdict {
     return {
       ok: false,
       reason: "private-host",
-      message: "That address is on a private network. Paste a public link.",
+      message: POSTING_MESSAGES.privateAddress,
     };
   }
 
@@ -82,7 +83,7 @@ export function inspectPostingUrl(raw: string): UrlVerdict {
     return {
       ok: false,
       reason: "blocked-host",
-      message: `${blocked} does not allow this. Copy the advert text into the field below instead — the tags still work.`,
+      message: blockedHostMessage(blocked),
     };
   }
 

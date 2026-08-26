@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { EntriesTable } from "@/components/docket/EntriesTable";
+import { DossierProvider } from "@/components/docket/EntryDossier";
 import { StampForm } from "@/components/docket/StampForm";
 import { Bar, FiguresSkeleton, Placeholder, TableSkeleton } from "@/components/Skeleton";
 import type { ExportFormat } from "@/lib/export/entries";
@@ -120,11 +121,13 @@ async function Register({
 
   if (rows.length > 0) {
     return (
-      <EntriesTable
-        entries={rows}
-        search={query.q}
-        sort={{ field: query.sort, direction: query.dir }}
-      />
+      <DossierProvider>
+        <EntriesTable
+          entries={rows}
+          search={query.q}
+          sort={{ field: query.sort, direction: query.dir }}
+        />
+      </DossierProvider>
     );
   }
 

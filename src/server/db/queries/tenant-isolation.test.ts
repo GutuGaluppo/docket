@@ -3,7 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
-import { createEntry, deleteEntry, getEntry, getEntryCounts, listEntries } from "./applications";
+import {
+  createEntry,
+  deleteEntry,
+  getEntry,
+  getEntryCounts,
+  getEntryDossier,
+  listEntries,
+} from "./applications";
 import { exportAccount } from "./account";
 import { fileRejection, getRejectionCounts, listRejections, reopenApplication } from "./rejections";
 import { createScope } from "./scope";
@@ -60,6 +67,25 @@ describe.skipIf(!url)("tenant isolation", () => {
 
   it("does not let another user read the entry by id", async () => {
     expect(await getEntry(malloryScope, aliceEntryId)).toBeNull();
+  });
+
+  it("gives the owner the whole dossier, the stored advert included", async () => {
+    const dossier = await getEntryDossier(aliceScope, aliceEntryId);
+    expect(dossier?.jobDescription).toBe("React, TypeScript");
+    expect(dossier?.tags).toEqual(["React", "TypeScript"]);
+    expect(dossier?.rejectedAt).toBeNull();
+    // createEntry writes the opening status event, so the history is never empty.
+    expect(dossier?.events).toHaveLength(1);
+    expect(dossier?.interviews).toEqual([]);
+  });
+
+  /**
+   * The dossier is the one read that returns the job advert in full, so it is
+   * the one worth checking twice: a missing owner filter here would hand a
+   * stranger the whole entry rather than a row of it.
+   */
+  it("does not let another user open the dossier", async () => {
+    expect(await getEntryDossier(malloryScope, aliceEntryId)).toBeNull();
   });
 
   it("does not let another user see the entry in a listing", async () => {

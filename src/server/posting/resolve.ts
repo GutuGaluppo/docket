@@ -5,6 +5,7 @@ import { draftFromPage } from "@/lib/posting/heuristics";
 import { jsonLdBlocks } from "@/lib/posting/html";
 import { draftFromJsonLd } from "@/lib/posting/jsonld";
 import { mergeDraft, type Contribution } from "@/lib/posting/merge";
+import { POSTING_MESSAGES } from "@/lib/posting/messages";
 import { inspectPostingUrl } from "@/lib/posting/url";
 import type { PostingPartial, PostingResult } from "@/lib/posting/types";
 
@@ -74,7 +75,7 @@ export async function resolvePosting(raw: string): Promise<PostingResult> {
     return {
       ok: false,
       reason: "nothing-found",
-      message: "Nothing readable on that page. Paste the advert text below instead.",
+      message: POSTING_MESSAGES.nothingFound,
     };
   }
 

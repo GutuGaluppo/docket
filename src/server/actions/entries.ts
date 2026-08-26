@@ -2,11 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createEntry, deleteEntry, updateEntry } from "@/server/db/queries/applications";
+import {
+  createEntry,
+  deleteEntry,
+  getEntryDossier,
+  updateEntry,
+  type EntryDossier,
+} from "@/server/db/queries/applications";
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
 import { captureForUser } from "@/server/analytics/capture";
 import { EVENTS } from "@/lib/analytics/events";
-import { deleteEntrySchema, editEntrySchema, entryInputSchema } from "@/lib/validation/entry";
+import {
+  deleteEntrySchema,
+  editEntrySchema,
+  entryIdSchema,
+  entryInputSchema,
+} from "@/lib/validation/entry";
 
 export type ActionResult =
   { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
@@ -123,4 +134,36 @@ export async function removeEntry(input: unknown): Promise<ActionResult> {
   revalidatePath("/board");
   revalidatePath("/archive");
   return { ok: true };
+}
+
+export type DossierResult = { ok: true; entry: EntryDossier } | { ok: false; error: string };
+
+/**
+ * Hands back one entry in full, for the panel that opens over a card.
+ *
+ * A read, not a write, and an action rather than a page because of what it is
+ * carrying: the stored job advert, which the listings deliberately leave out.
+ * Fetching it when the card is opened is what keeps a board of forty cards
+ * from shipping forty job adverts to a browser that was only going to read one.
+ *
+ * The session check comes first here for the same reason it does in every
+ * other action — this is a public endpoint, whoever calls it.
+ */
+export async function readEntryDossier(input: unknown): Promise<DossierResult> {
+  let scope;
+  try {
+    scope = await requireScope();
+  } catch (error) {
+    if (error instanceof UnauthenticatedError) return { ok: false, error: "Sign in first." };
+    throw error;
+  }
+
+  const parsed = entryIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Unknown entry." };
+
+  const entry = await getEntryDossier(scope, parsed.data.id);
+  // Same answer for a row that is gone and a row that is somebody else's.
+  if (!entry) return { ok: false, error: "Entry not found." };
+
+  return { ok: true, entry };
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { Board } from "@/components/board/Board";
+import { DossierProvider } from "@/components/docket/EntryDossier";
 import { Bar, BoardSkeleton, Placeholder } from "@/components/Skeleton";
 import { requireScope } from "@/server/auth/session";
 import { getBoard, type BoardColumn } from "@/server/db/queries/board";
@@ -60,7 +61,11 @@ async function Proceedings({
     );
   }
 
-  return <Board columns={columns} filed={archive.total} />;
+  return (
+    <DossierProvider>
+      <Board columns={columns} filed={archive.total} />
+    </DossierProvider>
+  );
 }
 
 export default function BoardPage() {

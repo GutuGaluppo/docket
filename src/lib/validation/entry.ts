@@ -30,9 +30,12 @@ export const entryInputSchema = z.object({
 export type EntryInput = z.input<typeof entryInputSchema>;
 export type EntryValues = z.output<typeof entryInputSchema>;
 
-export const deleteEntrySchema = z.object({
+/** Naming one entry — all any action needs when it neither creates nor edits. */
+export const entryIdSchema = z.object({
   id: z.string().min(1),
 });
+
+export const deleteEntrySchema = entryIdSchema;
 
 /**
  * A correction is the same shape as an entry plus the id of the row it fixes.

@@ -2,6 +2,7 @@ import "server-only";
 
 import { lookup } from "node:dns/promises";
 
+import { POSTING_MESSAGES, messageForStatus } from "@/lib/posting/messages";
 import { isBlockedAddress } from "@/lib/posting/net";
 import type { PostingFailure } from "@/lib/posting/types";
 
@@ -50,7 +51,7 @@ async function assertPublicHost(url: URL): Promise<FetchOutcome | null> {
   // here anyway, because this function is also the redirect gate.
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
     return isBlockedAddress(host)
-      ? { ok: false, reason: "private-host", message: "That link points inside a private network." }
+      ? { ok: false, reason: "private-host", message: POSTING_MESSAGES.privateHost }
       : null;
   }
 
@@ -58,16 +59,16 @@ async function assertPublicHost(url: URL): Promise<FetchOutcome | null> {
   try {
     addresses = await lookup(host, { all: true });
   } catch {
-    return unreachable("That host does not resolve.");
+    return unreachable(POSTING_MESSAGES.unknownHost);
   }
 
-  if (addresses.length === 0) return unreachable("That host does not resolve.");
+  if (addresses.length === 0) return unreachable(POSTING_MESSAGES.unknownHost);
   // Every answer must pass: one private record is enough to make the fetch unsafe.
   if (addresses.some((entry) => isBlockedAddress(entry.address))) {
     return {
       ok: false,
       reason: "private-host",
-      message: "That link points inside a private network.",
+      message: POSTING_MESSAGES.privateHost,
     };
   }
   return null;
@@ -130,36 +131,32 @@ export async function safeFetch(target: URL, accept: string): Promise<FetchOutco
           headers: { accept, "user-agent": USER_AGENT, "accept-language": "en,*;q=0.5" },
         });
       } catch {
-        return unreachable("Could not reach that link.");
+        return unreachable(POSTING_MESSAGES.unreachable);
       }
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
-        if (!location) return unreachable("That link redirects nowhere.");
+        if (!location) return unreachable(POSTING_MESSAGES.forwardsNowhere);
         try {
           url = new URL(location, url);
         } catch {
-          return unreachable("That link redirects somewhere unreadable.");
+          return unreachable(POSTING_MESSAGES.forwardsUnreadable);
         }
         if (url.protocol !== "https:" && url.protocol !== "http:") {
-          return { ok: false, reason: "scheme", message: "That link redirects off the web." };
+          return { ok: false, reason: "scheme", message: POSTING_MESSAGES.forwardsOffTheWeb };
         }
         url.username = "";
         url.password = "";
         continue;
       }
 
-      if (!response.ok) {
-        return unreachable(
-          response.status === 404
-            ? "That advert is no longer there."
-            : `The site answered ${response.status}.`,
-        );
-      }
+      // The status is the protocol's opinion; messages.ts turns it into the
+      // reader's situation, and is the only place that wording lives.
+      if (!response.ok) return unreachable(messageForStatus(response.status));
 
       const body = await readCapped(response);
       if (body === null) {
-        return { ok: false, reason: "too-large", message: "That page is larger than 2 MB." };
+        return { ok: false, reason: "too-large", message: POSTING_MESSAGES.tooLarge };
       }
 
       return {
@@ -170,7 +167,7 @@ export async function safeFetch(target: URL, accept: string): Promise<FetchOutco
       };
     }
 
-    return unreachable("That link redirects too many times.");
+    return unreachable(POSTING_MESSAGES.forwardsInCircles);
   } finally {
     clearTimeout(timer);
   }

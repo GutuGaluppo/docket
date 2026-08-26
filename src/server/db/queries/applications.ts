@@ -3,7 +3,13 @@ import "server-only";
 import { and, asc, count, desc, eq, exists, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { applications, applicationTags, stages, statusEvents } from "@/server/db/schema";
+import {
+  applications,
+  applicationTags,
+  interviews,
+  stages,
+  statusEvents,
+} from "@/server/db/schema";
 import type { Scope } from "./scope";
 import { DEFAULT_STAGES, getFirstStageId } from "./stages";
 
@@ -330,6 +336,120 @@ export async function deleteEntry(scope: Scope, id: string): Promise<boolean> {
     .returning({ id: applications.id });
 
   return deleted.length > 0;
+}
+
+/* ---------------------------------------------------------------------------
+   The dossier — one entry, read in full.
+--------------------------------------------------------------------------- */
+
+/**
+ * Everything the register knows about a single application, gathered for the
+ * screen that shows it whole.
+ *
+ * This is deliberately not what a listing returns. `jobDescription` alone can
+ * be fifty thousand characters, and a board of forty cards carrying that would
+ * be megabytes of payload for text nobody has asked to read yet — so the
+ * listings stay narrow and this is fetched the moment a card is opened.
+ */
+export type DossierEvent = {
+  id: string;
+  stageName: string;
+  occurredAt: Date;
+  note: string | null;
+};
+
+export type DossierInterview = {
+  id: string;
+  title: string;
+  startsAt: Date;
+  durationMinutes: number;
+  location: string | null;
+  timezone: string | null;
+};
+
+export type EntryDossier = EntryDetail & {
+  /** Null while the application is still open; see the schema note on filing. */
+  rejectedAt: Date | null;
+  rejectedAtStage: string | null;
+  rejectionNote: string | null;
+  events: DossierEvent[];
+  interviews: DossierInterview[];
+};
+
+/** Chronological, like `getHistory` — the funnel reads as a progression. */
+function listEntryEvents(scope: Scope, id: string) {
+  return db
+    .select({
+      id: statusEvents.id,
+      stageName: statusEvents.stageName,
+      occurredAt: statusEvents.occurredAt,
+      note: statusEvents.note,
+    })
+    .from(statusEvents)
+    .innerJoin(applications, eq(statusEvents.applicationId, applications.id))
+    .where(scope.owned(applications.userId, eq(applications.id, id)))
+    .orderBy(asc(statusEvents.occurredAt));
+}
+
+/** Every interview, past ones included: they are the record of how far it got. */
+function listEntryInterviews(scope: Scope, id: string) {
+  return db
+    .select({
+      id: interviews.id,
+      title: interviews.title,
+      startsAt: interviews.startsAt,
+      durationMinutes: interviews.durationMinutes,
+      location: interviews.location,
+      timezone: interviews.timezone,
+    })
+    .from(interviews)
+    .innerJoin(applications, eq(interviews.applicationId, applications.id))
+    .where(scope.owned(applications.userId, eq(applications.id, id)))
+    .orderBy(asc(interviews.startsAt));
+}
+
+/**
+ * Reads one entry whole. Returns null both for an id that does not exist and
+ * for one belonging to somebody else — the two must stay indistinguishable.
+ *
+ * The row is fetched first because it is the ownership check; the history and
+ * the interviews are scoped the same way through their join back to
+ * `applications`, and run together once there is something to attach them to.
+ */
+export async function getEntryDossier(scope: Scope, id: string): Promise<EntryDossier | null> {
+  const [row] = await db
+    .select({
+      id: applications.id,
+      protocolNumber: applications.protocolNumber,
+      company: applications.company,
+      website: applications.website,
+      position: applications.position,
+      city: applications.city,
+      country: applications.country,
+      notes: applications.notes,
+      stage: sql<
+        string | null
+      >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+      createdAt: applications.createdAt,
+      timezone: applications.timezone,
+      jobDescription: applications.jobDescription,
+      tags: tagsAgg,
+      rejectedAt: applications.rejectedAt,
+      rejectedAtStage: applications.rejectedAtStage,
+      rejectionNote: applications.rejectionNote,
+    })
+    .from(applications)
+    .where(scope.owned(applications.userId, eq(applications.id, id)))
+    .limit(1);
+
+  if (!row) return null;
+
+  const [events, scheduled] = await Promise.all([
+    listEntryEvents(scope, id),
+    listEntryInterviews(scope, id),
+  ]);
+
+  return { ...row, events, interviews: scheduled };
 }
 
 /** What the edit screen needs on top of a listing row. */

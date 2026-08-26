@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Entry, SortDirection, SortField } from "@/server/db/queries/applications";
 import { elapsed, protocolNumber } from "@/lib/format";
 import { CompanyLogo } from "./CompanyLogo";
+import { DossierTrigger } from "./DossierTrigger";
 import { DeleteEntryButton } from "./DeleteEntryButton";
 import { RejectionButton } from "./RejectionButton";
 import { Stamp } from "./Stamp";
@@ -76,7 +77,13 @@ export function EntriesTable({
               <td className="font-semibold" data-label="Company">
                 <span className="flex items-center gap-3">
                   <CompanyLogo company={entry.company} website={entry.website} />
-                  <span>{entry.company}</span>
+                  <DossierTrigger
+                    id={entry.id}
+                    label={`${entry.company} — ${entry.position}`}
+                    className="font-semibold underline decoration-dotted underline-offset-4"
+                  >
+                    {entry.company}
+                  </DossierTrigger>
                 </span>
               </td>
               <td className="text-sm text-muted" data-label="Position">
