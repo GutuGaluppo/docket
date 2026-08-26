@@ -21,6 +21,8 @@ type Entitlements = {
   stages: number;
   followUpReminders: boolean;
   analytics: boolean;
+  /** Readings of a CV against an advert, per calendar month. */
+  resumeAnalyses: number;
 };
 
 export const LIMITS = {
@@ -31,9 +33,34 @@ export const LIMITS = {
     stages: 3,
     followUpReminders: false,
     analytics: false,
+    /**
+     * Three readings a month rather than none.
+     *
+     * The proposal reserves CV tailoring for Pro outright, and that is where it
+     * lands once there is a Pro to buy. Until then a zero here would mean the
+     * feature exists for nobody: no account resolves to Pro while checkout is
+     * unbuilt, and a capability shipped switched off teaches nothing about
+     * whether anyone wants it. Three is enough to tailor a CV to a real
+     * application and see what the product does; the fourth is where the cap is
+     * met, which is the measurement. Setting this to 0 is the whole of moving
+     * the feature behind the paywall.
+     */
+    resumeAnalyses: 3,
   },
-  pro: { entries: Infinity, stages: Infinity, followUpReminders: true, analytics: true },
-  teams: { entries: Infinity, stages: Infinity, followUpReminders: true, analytics: true },
+  pro: {
+    entries: Infinity,
+    stages: Infinity,
+    followUpReminders: true,
+    analytics: true,
+    resumeAnalyses: 20,
+  },
+  teams: {
+    entries: Infinity,
+    stages: Infinity,
+    followUpReminders: true,
+    analytics: true,
+    resumeAnalyses: 20,
+  },
 } as const satisfies Record<Plan, Entitlements>;
 
 export async function getPlan(scope: Scope): Promise<Plan> {
@@ -110,5 +137,31 @@ export async function canUseAnalytics(scope: Scope): Promise<LimitVerdict> {
   return {
     allowed: false,
     reason: "Response-rate analytics is a Pro feature.",
+  };
+}
+
+/**
+ * Whether another reading may be started this month.
+ *
+ * A model request is the one thing the product does that costs money per use,
+ * so unlike the other caps this one is counted rather than compared: `used` is
+ * the number of readings already recorded in the current calendar month, read
+ * from the database by the caller. Editing, applying, undoing and recomputing
+ * the figure are all free and are never counted here — the cap is on asking the
+ * model, not on using what it already said.
+ */
+export async function canAnalyzeResume(scope: Scope, used: number): Promise<LimitVerdict> {
+  if (!BILLING_ENABLED) return { allowed: true };
+
+  const plan = await getPlan(scope);
+  const max: number = LIMITS[plan].resumeAnalyses;
+  if (used < max) return { allowed: true };
+
+  return {
+    allowed: false,
+    reason:
+      max === 0
+        ? "Tailoring a CV to a job is a Pro feature."
+        : `That is ${max} CV readings this month, which is what the plan includes. The count resets on the first.`,
   };
 }

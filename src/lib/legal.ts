@@ -29,7 +29,7 @@ export const SUPERVISORY_AUTHORITY = {
   url: "https://www.datenschutz-berlin.de",
 };
 
-export const LAST_UPDATED = "18 August 2026";
+export const LAST_UPDATED = "26 August 2026";
 
 /**
  * Everyone who processes data on our behalf, and where. All of it stays inside

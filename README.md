@@ -56,14 +56,15 @@ sign-in page will simply say none is configured.
 ```
 src/
   app/
-    (app)/          docket, board, calendar, archive, analytics, import, settings
-                    — behind the session gate
+    (app)/          docket, board, calendar, archive, cv, analytics, import,
+                    settings — behind the session gate
     api/            auth callbacks, POST /api/import
     sign-in/
   components/
     shell/          the sidebar and the bar above the page
     docket/         Stamp, StampForm, EntriesTable, CityField, CompanyLogo
     archive/        the rejection archive: RejectionsTable, ReopenButton
+    tailoring/      the CV editor, the Job Match panel and the recommendations
     settings/
   server/
     actions/        one server action per use case
@@ -72,13 +73,18 @@ src/
     db/queries/     the only place that touches a table
     import/         shared import runner
     posting/        the guarded fetch and the pipeline that drives it
+    tailoring/      the model call, and the reading it is merged into
   lib/
     stack-detector/ dictionary + algorithm (pure, tested)
     cities/         city → country base (pure, tested)
     import/         CSV and JSON parsing (pure, tested)
+    pdf/            a PDF read for its text: objects, fonts, layout (pure, tested)
     posting/        pasted link → draft entry (pure, tested)
+    resume/         the CV as data: schema, addressing, parsing, import (pure, tested)
+    tailoring/      advert → requirements → coverage → Job Match (pure, tested)
     validation/     Zod schemas shared by form and action
 docs/
+  cv-tailoring.md   importing a CV, reading it against an advert, and what may never happen
   entry-form.md     the entry form and the link pipeline, kept true by a test
   loading.md        what waits on a query in each section, kept true by a test
   pitch.md          the product in a paragraph, in English and Portuguese

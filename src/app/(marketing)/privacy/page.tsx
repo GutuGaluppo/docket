@@ -18,6 +18,14 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  /**
+   * Read at build time, and the only reason this page is not the same for every
+   * deployment: the clause about a language model describes something that
+   * either happens here or does not, and a policy that describes processing
+   * which is switched off is as wrong as one that omits processing which is on.
+   */
+  const cvReadingEnabled = Boolean(process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY);
+
   return (
     <LegalPage
       eyebrow="Privacy"
@@ -56,6 +64,17 @@ export default function PrivacyPage() {
           stamped it in, and the dates. Two fields are free text and hold whatever you type — your
           notes and the job advertisement you pasted. Interviews you schedule store a title, time,
           duration, place and notes.
+        </p>
+        <p>
+          <b className="text-ink">Your CV.</b> Only if you use the CV section. It holds the document
+          you upload, paste or type — name, contact details, work history, education, skills — plus
+          each reading of it against a job advert: the requirements found, what the CV evidences,
+          the Job Match figure and the recommendations. If you import a PDF, the file itself is kept
+          alongside the text taken out of it, so a bad import can be re-run and you can see what
+          yours was read from; it is never served anywhere, never shown to anyone else and never
+          written to a log. The version you arrived with is kept alongside the one you edit, so
+          nothing you applied is ever the only copy. Deleting your account deletes all of it, the
+          file included.
         </p>
         <p>
           <b className="text-ink">Technical.</b> One cookie, which keeps you signed in. There is no
@@ -135,6 +154,37 @@ export default function PrivacyPage() {
           <code className="font-mono text-xs">logo.clearbit.com</code>, falling back to
           Google&rsquo;s favicon service. Those requests carry the company&rsquo;s domain name and
           your IP address, never your identity or your notes.
+        </p>
+      </Clause>
+
+      <Clause heading="Reading a CV against a job advert">
+        <p>
+          The CV section compares one CV with one advert and proposes changes. It never edits the
+          document: every change is applied by you, one at a time, and can be undone.
+        </p>
+        {cvReadingEnabled ? (
+          <p>
+            The comparison uses a language model, and so does importing a PDF. When — and only when
+            — you press the button that starts a reading or an import, the text of your CV and the
+            text of the advert are sent to the model provider configured for this deployment, which
+            returns its reading and is asked not to retain the exchange. A scanned PDF is the one
+            case where the file itself is sent rather than text taken out of it, because there is no
+            text in it to send. Nothing is sent while you type, nothing is sent in the background,
+            and the content is never written to our logs or to any measurement. If that provider is
+            outside the EU, this is the one place where your data leaves it, and you decide whether
+            it happens by deciding whether to press the button.
+          </p>
+        ) : (
+          <p>
+            No language model is configured for this deployment, so both the import and the
+            comparison are done entirely on our own servers: the PDF is read here, and the
+            requirements, coverage, gaps and readability are computed here. Your CV does not leave
+            them.
+          </p>
+        )}
+        <p>
+          Either way, your CV is never used to train anything, never shown to an employer or a
+          recruiter, and never shared with another person using Docket.
         </p>
       </Clause>
 

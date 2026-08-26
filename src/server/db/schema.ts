@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -297,10 +298,157 @@ export const interviews = pgTable(
   (t) => [index("interviews_application_starts_idx").on(t.applicationId, t.startsAt)],
 );
 
+/* ---------------------------------------------------------------------------
+   CV tailoring. One CV per account for now, read against one advert at a time.
+--------------------------------------------------------------------------- */
+
+/**
+ * The working document, and the one it started as.
+ *
+ * `content` is the structured CV the editor writes to; `original` is whatever
+ * was first imported or typed and is never written again. Section 33 of the
+ * brief asks that no change silently destroys the CV a person arrived with, and
+ * a second column is the cheapest form that promise can take — every applied
+ * change is reversible one at a time through `resume_changes`, and the whole
+ * document is recoverable in one step through this one.
+ *
+ * Stored as JSON rather than as a dozen tables because nothing queries inside
+ * it: the CV is read whole, written whole, and addressed by the ids the
+ * document itself carries.
+ */
+export const resumes = pgTable(
+  "resumes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("My CV"),
+    content: jsonb("content").notNull(),
+    original: jsonb("original").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resumes_user_updated_idx").on(t.userId, t.updatedAt.desc())],
+);
+
+/**
+ * One reading of one CV against one advert.
+ *
+ * The advert is copied in rather than referenced, because the entry it came
+ * from can be corrected or deleted and a stored reading has to keep meaning
+ * what it meant. `applicationId` stays as the link when there is one, and goes
+ * null rather than taking the reading down with it.
+ *
+ * `result` holds the whole structured reading — the job analysis, the coverage,
+ * the figure and the recommendations with their current status — so reopening
+ * the page restores exactly the panel the person left.
+ */
+export const resumeAnalyses = pgTable(
+  "resume_analyses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    resumeId: text("resume_id")
+      .notNull()
+      .references(() => resumes.id, { onDelete: "cascade" }),
+    applicationId: text("application_id").references(() => applications.id, {
+      onDelete: "set null",
+    }),
+    jobDescription: text("job_description").notNull(),
+    result: jsonb("result").notNull(),
+    /** Which reading produced it: the model's name, or "heuristic". */
+    model: text("model").notNull().default("heuristic"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("resume_analyses_user_created_idx").on(t.userId, t.createdAt.desc()),
+    index("resume_analyses_resume_idx").on(t.resumeId),
+  ],
+);
+
+/**
+ * One PDF, read in.
+ *
+ * The file itself is kept, base64 in a column, and the reasons are the ones
+ * section 22 of the brief gives: a parse that went wrong can be re-run against
+ * the original, an import can be repeated, and a person can be shown what their
+ * CV was read from. It lives in Postgres because that is where everything else
+ * in this product lives — there is no object store to put it in, and adding one
+ * to hold a document under four megabytes would be infrastructure bought for a
+ * single feature.
+ *
+ * It is private by construction: nothing serves this column, no route returns
+ * it, and every query that reaches the table filters by owner.
+ *
+ * `result` holds the interpretation awaiting review. Once the person confirms
+ * it, `resumeId` names the document it became and the structured CV is the
+ * source of truth from then on — the file is only where it came from.
+ */
+export const resumeImports = pgTable(
+  "resume_imports",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Null until the review is confirmed. */
+    resumeId: text("resume_id").references(() => resumes.id, { onDelete: "set null" }),
+    fileName: text("file_name").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    pageCount: integer("page_count").notNull().default(0),
+    /** SHA-256 of the file, so the same CV uploaded twice is recognisable. */
+    checksum: text("checksum").notNull(),
+    /** The original document, base64. Never served, never logged. */
+    fileData: text("file_data"),
+    /** What came out of the PDF, kept for re-parsing without the file. */
+    extractedText: text("extracted_text").notNull().default(""),
+    result: jsonb("result").notNull(),
+    status: text("status").notNull().default("review"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resume_imports_user_created_idx").on(t.userId, t.createdAt.desc())],
+);
+
+/**
+ * Append-only history of applied changes. Undo reads the previous value from
+ * here, and the row is deleted only when the change it describes is undone.
+ */
+export const resumeChanges = pgTable(
+  "resume_changes",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    resumeId: text("resume_id")
+      .notNull()
+      .references(() => resumes.id, { onDelete: "cascade" }),
+    analysisId: text("analysis_id").references(() => resumeAnalyses.id, { onDelete: "set null" }),
+    suggestionId: text("suggestion_id"),
+    /** The flattened address, kept for display; `target` is what Undo writes through. */
+    targetId: text("target_id").notNull(),
+    target: jsonb("target").notNull(),
+    previousValue: text("previous_value").notNull(),
+    nextValue: text("next_value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resume_changes_resume_created_idx").on(t.resumeId, t.createdAt.desc())],
+);
+
 /* --------------------------------------------------------------------------- */
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   applications: many(applications),
+  resumes: many(resumes),
   subscription: one(subscriptions, {
     fields: [users.id],
     references: [subscriptions.userId],
@@ -341,6 +489,24 @@ export const statusEventsRelations = relations(statusEvents, ({ one }) => ({
   }),
 }));
 
+export const resumesRelations = relations(resumes, ({ one, many }) => ({
+  user: one(users, { fields: [resumes.userId], references: [users.id] }),
+  analyses: many(resumeAnalyses),
+  changes: many(resumeChanges),
+}));
+
+export const resumeAnalysesRelations = relations(resumeAnalyses, ({ one }) => ({
+  resume: one(resumes, { fields: [resumeAnalyses.resumeId], references: [resumes.id] }),
+  application: one(applications, {
+    fields: [resumeAnalyses.applicationId],
+    references: [applications.id],
+  }),
+}));
+
+export const resumeChangesRelations = relations(resumeChanges, ({ one }) => ({
+  resume: one(resumes, { fields: [resumeChanges.resumeId], references: [resumes.id] }),
+}));
+
 export const schema = {
   users,
   accounts,
@@ -354,7 +520,14 @@ export const schema = {
   stages,
   interviews,
   reminders,
+  resumes,
+  resumeAnalyses,
+  resumeChanges,
+  resumeImports,
   usersRelations,
+  resumesRelations,
+  resumeAnalysesRelations,
+  resumeChangesRelations,
   stagesRelations,
   interviewsRelations,
   applicationsRelations,
@@ -367,3 +540,7 @@ export type NewApplication = typeof applications.$inferInsert;
 export type Stage = typeof stages.$inferSelect;
 export type StageKind = (typeof stageKindEnum.enumValues)[number];
 export type Interview = typeof interviews.$inferSelect;
+export type ResumeRow = typeof resumes.$inferSelect;
+export type ResumeAnalysisRow = typeof resumeAnalyses.$inferSelect;
+export type ResumeChangeRow = typeof resumeChanges.$inferSelect;
+export type ResumeImportRow = typeof resumeImports.$inferSelect;

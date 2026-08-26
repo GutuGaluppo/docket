@@ -22,6 +22,7 @@ export const config = {
     "/board/:path*",
     "/calendar/:path*",
     "/archive/:path*",
+    "/cv/:path*",
     "/analytics/:path*",
     "/settings/:path*",
   ],

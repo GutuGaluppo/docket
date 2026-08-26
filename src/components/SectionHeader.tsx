@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
  * page passes the real one; the loading file passes its placeholder.
  */
 export type SectionKey =
-  "docket" | "board" | "calendar" | "archive" | "analytics" | "import" | "settings";
+  "docket" | "board" | "calendar" | "archive" | "analytics" | "cv" | "import" | "settings";
 
 export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede?: string }> = {
   docket: {
@@ -40,6 +40,11 @@ export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede
     eyebrow: "Findings",
     title: "Analytics",
     lede: "What the register says once there is enough of it. An entry counts as answered when it leaves the first column — the moment someone on the other side did something.",
+  },
+  cv: {
+    eyebrow: "Preparation",
+    title: "CV",
+    lede: "One CV, read against one advert. The comparison names what the role asks for, what your CV already evidences and where the gaps are — then proposes changes you apply one at a time. Nothing is rewritten without you, and nothing you have not done is ever written in.",
   },
   import: {
     eyebrow: "Transfer of records",

@@ -453,6 +453,44 @@ export async function getEntryDossier(scope: Scope, id: string): Promise<EntryDo
 }
 
 /** What the edit screen needs on top of a listing row. */
+/** One entry, reduced to what the CV editor needs to offer it as a source. */
+export type AdvertSource = {
+  id: string;
+  protocolNumber: number;
+  company: string;
+  position: string;
+};
+
+/**
+ * The entries that stored the advert they were stamped from.
+ *
+ * The tailoring page reads a job description from the register rather than
+ * asking for it a second time — the person already pasted it once. Entries with
+ * no advert are left out because there would be nothing to compare against, and
+ * the advert itself is not selected here: forty adverts is megabytes, and the
+ * page needs one, fetched when it is chosen.
+ */
+export async function listAdvertSources(scope: Scope): Promise<AdvertSource[]> {
+  const rows = await db
+    .select({
+      id: applications.id,
+      protocolNumber: applications.protocolNumber,
+      company: applications.company,
+      position: applications.position,
+    })
+    .from(applications)
+    .where(
+      scope.owned(
+        applications.userId,
+        sql`${applications.jobDescription} is not null and length(${applications.jobDescription}) > 120`,
+      ),
+    )
+    .orderBy(desc(applications.createdAt))
+    .limit(100);
+
+  return rows;
+}
+
 export type EntryDetail = Entry & { jobDescription: string | null };
 
 export async function getEntry(scope: Scope, id: string): Promise<EntryDetail | null> {

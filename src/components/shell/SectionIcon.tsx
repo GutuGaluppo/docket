@@ -13,6 +13,7 @@ export type IconName =
   | "archive"
   | "analytics"
   | "import"
+  | "cv"
   | "settings"
   | "plus"
   | "menu"
@@ -61,6 +62,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M2.5 5.2h11M2.5 10.8h11" />
       <circle cx="6" cy="5.2" r="1.7" />
       <circle cx="10" cy="10.8" r="1.7" />
+    </>
+  ),
+  cv: (
+    <>
+      <path d="M3 2.6h7.2L13 5.4v8a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 13.4z" />
+      <path d="M9.8 2.6v3h3.1M5.6 8.6h4.8M5.6 11h3.2" />
     </>
   ),
   plus: <path d="M8 3.4v9.2M3.4 8h9.2" />,

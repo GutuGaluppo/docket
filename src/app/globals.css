@@ -1051,6 +1051,771 @@
     }
   }
 
+  /* ---------------------------------------------------------------------------
+     CV tailoring.
+
+     Two columns on a wide screen: the document, and the panel reading it. The
+     panel is sticky rather than scrolling with the page, because the whole
+     interaction is "this card points at that field" and a card that scrolls off
+     while its field is on screen breaks the sentence.
+
+     Highlights are drawn with a rule, a bar and a wash together. Colour alone
+     would leave the connection invisible to a reader who cannot see the
+     difference, and in forced-colours mode it disappears entirely — which is
+     what the block at the end of this section is for.
+  ------------------------------------------------------------------------- */
+  .cv-layout {
+    display: grid;
+    align-items: start;
+    gap: 22px;
+    margin-top: 24px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cv-head {
+    display: grid;
+    gap: 18px;
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 1100px) {
+    .cv-head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .cv-layout {
+      grid-template-columns: minmax(0, 1.85fr) minmax(320px, 1fr);
+    }
+    .cv-aside {
+      position: sticky;
+      top: 12px;
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
+    }
+  }
+
+  .cv-match,
+  .cv-source,
+  .cv-section,
+  .cv-aside,
+  .cv-start {
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 18px;
+  }
+
+  .cv-match {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .cv-match-score {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: var(--text-5xl);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .cv-match-delta {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+  }
+
+  .cv-match-delta[data-direction="up"] {
+    color: var(--accent);
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
+  }
+
+  .cv-match-delta[data-direction="down"] {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: var(--danger-wash);
+  }
+
+  .cv-match-band {
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .cv-match-caveat,
+  .cv-source-note {
+    max-width: 56ch;
+    font-size: var(--text-xs);
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .cv-match-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px dashed var(--rule);
+    padding-top: 12px;
+  }
+
+  .cv-bar {
+    display: grid;
+    align-items: center;
+    gap: 10px;
+    grid-template-columns: minmax(0, 11ch) minmax(60px, 1fr) 5ch;
+    font-size: var(--text-xs);
+  }
+
+  .cv-bar-label {
+    color: var(--muted);
+  }
+
+  .cv-bar-track {
+    height: 6px;
+    border: 1px solid var(--rule);
+    border-radius: 1px;
+    background: var(--ground);
+  }
+
+  .cv-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+
+  .cv-bar-value {
+    font-family: var(--font-mono);
+    text-align: right;
+  }
+
+  .cv-status-line {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .cv-flagged {
+    border-bottom: 2px solid var(--mark-edge);
+    background: var(--mark-wash);
+    padding: 0 3px;
+  }
+
+  .cv-source {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cv-source-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* The document ------------------------------------------------------------ */
+  .cv-restart {
+    border: 1px dashed var(--rule);
+    border-radius: 2px;
+    background: var(--raised);
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    padding: 10px 12px;
+  }
+
+  .cv-document {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .cv-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .cv-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .cv-entry {
+    border-left: 2px solid var(--rule);
+    padding-left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cv-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cv-entry-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .cv-remove {
+    border: 1px solid transparent;
+    background: none;
+    color: var(--faint);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-md);
+    line-height: 1;
+    padding: 0 6px;
+  }
+
+  .cv-remove:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .cv-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .cv-bullets {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cv-bullet {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 6px;
+  }
+
+  /* Highlights -------------------------------------------------------------- */
+  .cv-field {
+    border-left: 3px solid transparent;
+    border-radius: 2px;
+    padding-left: 8px;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .cv-field[data-highlight="hover"] {
+    border-left-style: dotted;
+    border-left-color: var(--accent-edge);
+    background: var(--accent-wash);
+  }
+
+  .cv-field[data-highlight="selected"] {
+    border-left-color: var(--accent);
+    background: var(--accent-wash);
+    outline: 1px solid var(--accent-edge);
+    outline-offset: 2px;
+  }
+
+  .cv-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* The panel --------------------------------------------------------------- */
+  .cv-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cv-aside-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cv-aside-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cv-aside[data-collapsed="true"] .cv-aside-body {
+    display: none;
+  }
+
+  @media (min-width: 900px) {
+    .cv-aside[data-collapsed="true"] .cv-aside-body {
+      display: flex;
+    }
+  }
+
+  .cv-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .cv-filter {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--raised);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    padding: 3px 8px;
+  }
+
+  .cv-filter[data-current="true"] {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .cv-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cv-card {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    border-radius: 2px;
+    background: var(--raised);
+  }
+
+  .cv-card[data-priority="high"] {
+    border-left-color: var(--mark);
+  }
+
+  .cv-card[data-state="active"] {
+    border-color: var(--accent-edge);
+    border-left-color: var(--accent);
+    box-shadow: var(--paper-shadow);
+  }
+
+  .cv-card[data-status="dismissed"] {
+    opacity: 0.55;
+  }
+
+  .cv-card[data-status="applied"],
+  .cv-card[data-status="edited"] {
+    border-left-style: double;
+  }
+
+  .cv-card-open {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .cv-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .cv-chip {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .cv-chip[data-priority="high"] {
+    border-color: var(--mark-edge);
+    background: var(--mark-wash);
+    color: var(--mark-ink);
+  }
+
+  .cv-chip[data-done="true"] {
+    border-color: var(--accent-edge);
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+
+  .cv-card-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .cv-card-path {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+
+  .cv-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px dashed var(--rule);
+    padding: 12px;
+    font-size: var(--text-sm);
+  }
+
+  .cv-diff {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-left: 2px solid var(--rule);
+    padding-left: 10px;
+  }
+
+  .cv-diff[data-kind="suggested"] {
+    border-left-color: var(--accent);
+  }
+
+  .cv-diff-text {
+    line-height: 1.55;
+  }
+
+  .cv-why p,
+  .cv-confirm {
+    color: var(--muted);
+    line-height: 1.55;
+    font-size: var(--text-xs);
+  }
+
+  .cv-confirm {
+    border: 1px dashed var(--mark-edge);
+    background: var(--mark-wash);
+    color: var(--text);
+    padding: 8px;
+  }
+
+  .cv-affects {
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  .cv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cv-empty {
+    color: var(--muted);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .cv-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-left: 2px solid var(--accent);
+    padding-left: 10px;
+    font-size: var(--text-xs);
+    color: var(--muted);
+    list-style: none;
+  }
+
+  .cv-history {
+    border-top: 1px dashed var(--rule);
+    padding-top: 10px;
+    font-size: var(--text-xs);
+  }
+
+  .cv-history ul {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+  }
+
+  .cv-history li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cv-history-target {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--faint);
+    overflow-wrap: anywhere;
+  }
+
+  .cv-history-text {
+    color: var(--muted);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* Where colour is not available, the connection has to survive as structure. */
+  @media (forced-colors: active) {
+    .cv-field[data-highlight="hover"],
+    .cv-field[data-highlight="selected"] {
+      border-left: 3px solid CanvasText;
+      outline: 2px solid CanvasText;
+    }
+    .cv-card[data-state="active"] {
+      outline: 2px solid CanvasText;
+    }
+    .cv-filter[data-current="true"] {
+      outline: 2px solid CanvasText;
+    }
+    .cv-bar-fill {
+      background: CanvasText;
+    }
+  }
+
+  /* A CV is printed, and the panel around it is not part of the document. */
+  @media print {
+    .cv-aside,
+    .cv-head,
+    .cv-remove {
+      display: none;
+    }
+    .cv-layout {
+      display: block;
+    }
+  }
+
+  /* Importing a PDF ---------------------------------------------------------- */
+  .cv-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .cv-dropzone {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px dashed var(--rule);
+    border-radius: 3px;
+    background: var(--raised);
+    padding: 16px;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .cv-dropzone[data-dragging="true"] {
+    border-color: var(--accent);
+    border-style: solid;
+    background: var(--accent-wash);
+  }
+
+  .cv-file {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  .cv-file::file-selector-button {
+    margin-right: 10px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .cv-file::file-selector-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .cv-file:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .cv-file-chosen {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    font-size: var(--text-xs);
+  }
+
+  .cv-file-name {
+    font-family: var(--font-mono);
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+
+  .cv-upload-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .cv-upload-note {
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  /* A rule with a word in it, between two ways of doing the same thing. */
+  .cv-or {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 14px;
+    font-size: var(--text-xs);
+    color: var(--faint);
+  }
+
+  .cv-or::before,
+  .cv-or::after {
+    content: "";
+    flex: 1;
+    border-top: 1px dashed var(--rule);
+  }
+
+  /* The review ---------------------------------------------------------------- */
+  .cv-review {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 18px;
+  }
+
+  .cv-review-counts {
+    display: grid;
+    gap: 4px 18px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    border-top: 1px dashed var(--rule);
+    border-bottom: 1px dashed var(--rule);
+    padding: 10px 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .cv-review-counts li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cv-review-counts li[data-empty="true"] {
+    color: var(--faint);
+  }
+
+  .cv-review-count {
+    font-family: var(--font-mono);
+  }
+
+  .cv-review-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-left: 3px solid var(--mark);
+    background: var(--mark-wash);
+    padding: 10px 12px;
+    list-style: none;
+    font-size: var(--text-xs);
+    line-height: 1.55;
+  }
+
+  .cv-unclassified ul {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .cv-unclassified li {
+    display: flex;
+    gap: 8px;
+    border-left: 2px solid var(--rule);
+    padding-left: 10px;
+    color: var(--muted);
+  }
+
+  .cv-page-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
+  .cv-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+  }
+
+  /* A field the reading was unsure about, marked by more than its colour. */
+  .cv-field[data-flagged="true"] {
+    border-left: 3px solid var(--mark);
+    background: var(--mark-wash);
+  }
+
+  .cv-review-note {
+    margin-top: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--mark-ink);
+  }
+
+  .cv-current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  @media (forced-colors: active) {
+    .cv-field[data-flagged="true"] {
+      border-left: 3px solid CanvasText;
+      outline: 1px dashed CanvasText;
+    }
+    .cv-dropzone[data-dragging="true"] {
+      outline: 2px solid CanvasText;
+    }
+  }
+
   /* Scroll reveal. The hidden state only exists where scripting is on, so a
      page loaded without JavaScript shows everything immediately instead of
      staying blank — the landing has to work either way. */

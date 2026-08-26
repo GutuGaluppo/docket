@@ -34,6 +34,7 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
       { href: "/archive", label: "Archive", icon: "archive" },
     ],
   },
+  { label: "Preparation", items: [{ href: "/cv", label: "CV", icon: "cv" }] },
   { label: "Findings", items: [{ href: "/analytics", label: "Analytics", icon: "analytics" }] },
   { label: "Records", items: [{ href: "/docket/import", label: "Import", icon: "import" }] },
 ];
