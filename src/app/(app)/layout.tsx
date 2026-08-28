@@ -4,6 +4,7 @@ import { signOut } from "@/auth";
 import { AppShell } from "@/components/shell/AppShell";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { RedesignBanner } from "@/components/shared/RedesignBanner";
 import { getSession } from "@/server/auth/session";
 
 /**
@@ -44,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
         }
       >
+        <RedesignBanner />
         {children}
       </AppShell>
     </>

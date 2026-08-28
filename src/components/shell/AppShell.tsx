@@ -157,6 +157,17 @@ export function AppShell({
           <span className="nav-label">New entry</span>
         </Link>
 
+        {/* Command Palette Hint */}
+        <div className="px-3 py-2 mb-2 text-xs text-faint font-mono">
+          <span className="nav-label">
+            Press{" "}
+            <kbd className="px-1.5 py-0.5 bg-card border border-rule rounded text-[10px]">
+              ⌘K
+            </kbd>{" "}
+            for commands
+          </span>
+        </div>
+
         <nav className="sidebar-nav">
           {GROUPS.map((group) => (
             <div key={group.label} className="nav-group">

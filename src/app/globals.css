@@ -673,14 +673,16 @@
     text-decoration: none;
   }
   .docket-table td {
-    padding: 16px 12px;
+    padding: 11px 12px;  /* Reduced from 16px - more compact */
     border-bottom: 1px solid var(--rule);
     font-size: 15px;
     vertical-align: top;
     background: var(--surface);
+    transition: all 0.15s ease;  /* Smooth hover */
   }
   .docket-table tbody tr:hover td {
     background: var(--raised);
+    box-shadow: var(--elevation-1);  /* Subtle lift on hover */
   }
   .docket-cell-number {
     font-family: var(--font-mono);

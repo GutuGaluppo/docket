@@ -23,6 +23,42 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showHint, setShowHint] = useState(true);
+  const router = useRouter();
+
+  // Hide hint after first use
+  useEffect(() => {
+    if (open) {
+      setShowHint(false);
+      localStorage.setItem("docket:commandPaletteUsed", "true");
+    }
+  }, [open]);
+
+  // Check if user has used it before
+  useEffect(() => {
+    const used = localStorage.getItem("docket:commandPaletteUsed");
+    setShowHint(!used);
+  }, []);
+
+interface Command {
+  id: string;
+  label: string;
+  icon?: string;
+  shortcut?: string;
+  action: () => void;
+  group: string;
+  keywords?: string[];
+}
+
+interface CommandGroup {
+  heading: string;
+  commands: Command[];
+}
+
+export function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const router = useRouter();
 
   // Define all available commands
@@ -229,7 +265,26 @@ export function CommandPalette() {
     setSelectedIndex(0);
   }, [search]);
 
-  if (!open) return null;
+  if (!open) {
+    return (
+      <>
+        {/* Floating hint badge - shows until first use */}
+        {showHint && (
+          <button
+            onClick={() => setOpen(true)}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-stamp px-4 py-3 text-sm font-medium text-on-stamp shadow-elevation-3 transition-all hover:shadow-elevation-4 hover:scale-105 animate-pulse-highlight"
+            style={{ animationIterationCount: 3 }}
+          >
+            <span>Press</span>
+            <kbd className="rounded bg-on-stamp/20 px-2 py-1 font-mono text-xs">
+              ⌘K
+            </kbd>
+            <span>to search</span>
+          </button>
+        )}
+      </>
+    );
+  }
 
   let commandIndex = 0;
 
