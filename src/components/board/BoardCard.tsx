@@ -55,14 +55,23 @@ export function BoardCard({
       // outside any column never hears about it otherwise, and would stay tilted.
       onDragEnd={() => setDragging(false)}
       aria-busy={pending}
-      className={`flex cursor-grab flex-col gap-2 rounded-[3px] border border-rule bg-sheet p-3 transition-transform duration-150 active:cursor-grabbing ${
+      className={`group flex cursor-grab flex-col gap-2.5 rounded-lg border bg-raised p-3.5 transition-all duration-200 active:cursor-grabbing ${
         pending ? "opacity-55" : ""
-      } ${dragging ? "rotate-[-15deg] shadow-paper" : ""}`}
+      } ${
+        dragging 
+          ? "rotate-[-2deg] scale-105 shadow-elevation-3 border-stamp" 
+          : "border-rule shadow-elevation-1 hover:shadow-elevation-2 hover:-translate-y-0.5"
+      }`}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-xs text-muted">{protocolNumber(card.protocolNumber)}</span>
+        <span className="font-mono text-[10px] text-faint group-hover:text-muted transition-colors">
+          {protocolNumber(card.protocolNumber)}
+        </span>
         {card.nextInterviewAt && (
-          <span className="font-mono text-[10px] tracking-[0.1em] text-stamp uppercase">
+          <span className="inline-flex items-center gap-1 rounded-full bg-stamp-wash px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-stamp uppercase border border-stamp-edge">
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(
               card.nextInterviewAt,
             )}
@@ -73,25 +82,38 @@ export function BoardCard({
       {/* The card's face opens the dossier; the select below it and the drag
           handler on the article are untouched, so the three ways to use a card
           do not compete for the same gesture. */}
-      <DossierTrigger id={card.id} label={`${card.company} — ${card.position}`} className="w-full">
-        <span className="block text-sm font-semibold">{card.company}</span>
-        <span className="mt-2 block text-xs text-muted">{card.position}</span>
+      <DossierTrigger 
+        id={card.id} 
+        label={`${card.company} — ${card.position}`} 
+        className="w-full group/trigger"
+      >
+        <span className="block text-sm font-semibold leading-tight group-hover/trigger:text-stamp transition-colors">
+          {card.company}
+        </span>
+        <span className="mt-1.5 block text-xs leading-tight text-muted group-hover/trigger:text-ink transition-colors">
+          {card.position}
+        </span>
       </DossierTrigger>
 
       {card.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {card.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="tag text-[11px]">
+        <div className="flex flex-wrap gap-1.5">
+          {card.tags.slice(0, 2).map((tag) => (
+            <span 
+              key={tag} 
+              className="rounded border border-stamp-edge bg-stamp-wash px-1.5 py-0.5 font-mono text-[10px] text-stamp"
+            >
               {tag}
             </span>
           ))}
-          {card.tags.length > 3 && (
-            <span className="font-mono text-[11px] text-faint">+{card.tags.length - 3}</span>
+          {card.tags.length > 2 && (
+            <span className="rounded border border-rule bg-card px-1.5 py-0.5 font-mono text-[10px] text-faint">
+              +{card.tags.length - 2}
+            </span>
           )}
         </div>
       )}
 
-      <label className="mt-1 flex flex-col gap-1" suppressHydrationWarning>
+      <label className="mt-0.5 flex flex-col gap-1" suppressHydrationWarning>
         <span className="sr-only">
           Move {card.company} — {card.position} to another column
         </span>
@@ -100,7 +122,7 @@ export function BoardCard({
           disabled={pending}
           suppressHydrationWarning
           onChange={(event) => moveTo(event.target.value)}
-          className="w-full cursor-pointer rounded-[2px] border border-rule bg-card px-2 py-1.5 font-mono text-[11px] tracking-[0.06em] uppercase focus:border-stamp focus:outline-none"
+          className="w-full cursor-pointer rounded border border-rule bg-card px-2 py-1.5 font-mono text-[10px] tracking-wider uppercase text-muted hover:border-stamp hover:bg-raised focus:border-stamp focus:outline-none focus:ring-2 focus:ring-stamp-wash transition-all"
         >
           {stages.map((stage) => (
             <option key={stage.id} value={stage.id}>

@@ -68,8 +68,10 @@ export function Board({ columns, filed }: { columns: BoardColumn[]; filed: numbe
               }}
               onDragLeave={() => setDragOver((id) => (id === column.stage.id ? null : id))}
               onDrop={(event) => onDrop(column.stage.id, event)}
-              className={`flex w-[264px] flex-none flex-col gap-3 rounded-[3px] border p-3 transition-colors ${
-                dragOver === column.stage.id ? "border-stamp bg-stamp-wash" : "border-rule bg-card"
+              className={`flex w-[280px] flex-none flex-col gap-3 rounded-lg border p-3.5 transition-all duration-200 ${
+                dragOver === column.stage.id 
+                  ? "border-stamp bg-stamp-wash shadow-elevation-2 scale-[1.02]" 
+                  : "border-rule bg-card shadow-elevation-1 hover:shadow-elevation-2"
               }`}
             >
               <header className="flex flex-col gap-2 border-b border-rule pb-2">
