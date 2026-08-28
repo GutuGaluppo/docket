@@ -40,27 +40,6 @@ export function CommandPalette() {
     setShowHint(!used);
   }, []);
 
-interface Command {
-  id: string;
-  label: string;
-  icon?: string;
-  shortcut?: string;
-  action: () => void;
-  group: string;
-  keywords?: string[];
-}
-
-interface CommandGroup {
-  heading: string;
-  commands: Command[];
-}
-
-export function CommandPalette() {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const router = useRouter();
-
   // Define all available commands
   const allCommands: Command[] = useMemo(
     () => [
