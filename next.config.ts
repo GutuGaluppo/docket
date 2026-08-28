@@ -40,6 +40,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: true,
+  /**
+   * `unpdf` ships a serverless build of pdf.js that reads `import.meta` to find
+   * its own worker. Bundling it rewrites that access and the bundler says so;
+   * left external, the file is required at runtime exactly as published, which
+   * is also what keeps the CV import working on the serverless runtime.
+   */
+  serverExternalPackages: ["unpdf"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "logo.clearbit.com" },
@@ -54,7 +61,8 @@ const nextConfig: NextConfig = {
        * is not: a header is stronger than robots.txt, which only asks.
        */
       {
-        source: "/:path(docket|board|calendar|archive|analytics|settings|sign-in|monitoring)/:rest*",
+        source:
+          "/:path(docket|board|calendar|archive|cv|analytics|settings|sign-in|monitoring)/:rest*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {

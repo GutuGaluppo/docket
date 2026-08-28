@@ -1,5 +1,6 @@
 import {
   blankBullet,
+  resumeId,
   blankCertification,
   blankEducation,
   blankExperience,
@@ -83,4 +84,41 @@ export function setEntryField<S extends EntrySection>(
       entry.id === entryId ? { ...entry, [field]: value } : entry,
     ),
   } as Resume;
+}
+
+/**
+ * An independent copy of a document.
+ *
+ * Every id is minted again. The rows would be independent either way — they are
+ * two records in a table — but the ids travel: a recommendation, a change and a
+ * highlight all name one, and two documents answering to the same address is a
+ * confusion waiting for the first person who tailors a copy while the original
+ * is still open in another tab.
+ */
+export function cloneResume(resume: Resume): Resume {
+  return {
+    personal: { ...resume.personal, links: [...resume.personal.links] },
+    summary: { ...resume.summary },
+    experience: resume.experience.map((entry) => ({
+      ...entry,
+      id: resumeId("exp"),
+      bullets: entry.bullets.map((bullet) => ({ id: resumeId("bul"), text: bullet.text })),
+    })),
+    education: resume.education.map((entry) => ({ ...entry, id: resumeId("edu") })),
+    skills: resume.skills.map((group) => ({
+      ...group,
+      id: resumeId("skl"),
+      skills: [...group.skills],
+    })),
+    projects: resume.projects.map((project) => ({
+      ...project,
+      id: resumeId("prj"),
+      bullets: project.bullets.map((bullet) => ({ id: resumeId("bul"), text: bullet.text })),
+    })),
+    languages: resume.languages.map((language) => ({ ...language, id: resumeId("lng") })),
+    certifications: resume.certifications.map((certification) => ({
+      ...certification,
+      id: resumeId("crt"),
+    })),
+  };
 }

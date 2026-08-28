@@ -40,6 +40,21 @@ export function containsTerm(haystack: string, term: string): boolean {
   const needle = normalize(term).trim();
   if (needle.length < 2) return false;
 
+  /**
+   * A hyphen is a typographic choice, not a difference in meaning: "customer-
+   * facing" and "customer facing" are the same claim, and half the CVs in the
+   * world pick the other one. Both spellings are tried before a term is called
+   * absent.
+   */
+  if (needle.includes("-") || needle.includes(" ")) {
+    const swapped = needle.includes("-") ? needle.replace(/-/g, " ") : needle.replace(/ /g, "-");
+    if (swapped !== needle && findWord(haystack, swapped)) return true;
+  }
+
+  return findWord(haystack, needle);
+}
+
+function findWord(haystack: string, needle: string): boolean {
   let from = 0;
   for (;;) {
     const start = haystack.indexOf(needle, from);

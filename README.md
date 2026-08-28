@@ -73,12 +73,13 @@ src/
     db/queries/     the only place that touches a table
     import/         shared import runner
     posting/        the guarded fetch and the pipeline that drives it
+    pdf/            the only module that imports unpdf
     tailoring/      the model call, and the reading it is merged into
   lib/
     stack-detector/ dictionary + algorithm (pure, tested)
     cities/         city → country base (pure, tested)
     import/         CSV and JSON parsing (pure, tested)
-    pdf/            a PDF read for its text: objects, fonts, layout (pure, tested)
+    pdf/            limits, extraction quality, column layout (pure, tested)
     posting/        pasted link → draft entry (pure, tested)
     resume/         the CV as data: schema, addressing, parsing, import (pure, tested)
     tailoring/      advert → requirements → coverage → Job Match (pure, tested)

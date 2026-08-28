@@ -6,6 +6,7 @@ import {
   DIMENSION_ORDER,
   matchLabel,
 } from "@/lib/tailoring/score";
+import type { JobMatchExplanation } from "@/lib/tailoring/types";
 
 import { useTailoring } from "./TailoringProvider";
 
@@ -130,6 +131,73 @@ export function JobMatchPanel() {
           </p>
         )}
       </div>
+
+      {state.analysis && <WhyThisFigure explanation={state.analysis.explanation} />}
     </section>
+  );
+}
+
+/**
+ * The working, kept.
+ *
+ * A percentage nobody can take apart is a percentage nobody can act on — and
+ * one that disagrees with the recommendations beside it is worse than none. The
+ * figure is arithmetic over requirements, so the requirements are what is shown
+ * here: what was asked for, what the CV evidences, and what it does not.
+ *
+ * Folded away by default because it is long, and never behind a developer flag
+ * because it is the most useful thing on the panel.
+ */
+function WhyThisFigure({ explanation }: { explanation: JobMatchExplanation }) {
+  const groups: Array<{ label: string; names: string[]; tone?: string }> = [
+    { label: "Evidenced", names: explanation.strong, tone: "strong" },
+    { label: "Mentioned, not shown", names: explanation.partial, tone: "partial" },
+    { label: "Not in the CV", names: explanation.missing, tone: "missing" },
+  ];
+
+  return (
+    <details className="cv-why-figure">
+      <summary>Why this figure?</summary>
+
+      <div className="cv-why-body">
+        {explanation.warnings.length > 0 && (
+          <p className="cv-confirm">{explanation.warnings.join(" ")}</p>
+        )}
+
+        <ul className="cv-why-dimensions">
+          {explanation.dimensions.map((dimension) => (
+            <li key={dimension.dimension}>
+              <span>{DIMENSION_LABELS[dimension.dimension]}</span>
+              <span className="cv-why-arithmetic">
+                {dimension.score === null
+                  ? "nothing to measure"
+                  : `${dimension.earned.toFixed(1)} of ${dimension.possible.toFixed(1)} → ${dimension.score}%`}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {groups.map((group) =>
+          group.names.length === 0 ? null : (
+            <div key={group.label} className="cv-why-group" data-tone={group.tone}>
+              <span className="eyebrow text-faint">
+                {group.label} ({group.names.length})
+              </span>
+              <p>{group.names.join(" · ")}</p>
+            </div>
+          ),
+        )}
+
+        {explanation.keywords.missed.length > 0 && (
+          <div className="cv-why-group">
+            <span className="eyebrow text-faint">
+              Terminology the advert uses and this CV does not ({explanation.keywords.missed.length}
+              )
+            </span>
+            <p>{explanation.keywords.missed.join(" · ")}</p>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }

@@ -71,9 +71,16 @@ export function ResumeStart({
 
   return (
     <section className="cv-start">
-      <h2 className="text-xl font-bold tracking-[-0.02em]">
-        {replacing ? "Bring in the CV you already have" : "Add your CV"}
-      </h2>
+      <div className="cv-start-head">
+        <h2 className="text-xl font-bold tracking-[-0.02em]">
+          {replacing ? "Bring in the CV you already have" : "Add your CV"}
+        </h2>
+        {!replacing && onCancel && (
+          <button type="button" className="link-quiet" onClick={onCancel} suppressHydrationWarning>
+            Back to the editor
+          </button>
+        )}
+      </div>
       <p className="mt-2 max-w-[62ch] text-sm text-muted">
         Start from the document you already have. It is read into sections, roles and bullets you
         can correct, and you see what was read before anything is saved.{" "}

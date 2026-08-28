@@ -30,17 +30,30 @@ const uploads = createLimiter({
   perInstance: 200,
 });
 
+/**
+ * One sentence per failure code.
+ *
+ * The codes come from the extraction service, which never passes the library's
+ * own error text along: a parser's message can quote the file it choked on, and
+ * the file is somebody's CV. What the person reads is written here, in terms of
+ * their document rather than of the format.
+ */
 const MESSAGES: Record<ImportFailureReason, string> = {
-  "not-pdf": "That file is not a PDF. Upload the PDF of your CV, or paste it as text instead.",
-  "too-large": `That file is larger than ${Math.round(PDF_LIMITS.maxFileSize / (1024 * 1024))} MB. A text CV is usually well under one.`,
-  encrypted:
+  INVALID_PDF:
+    "That file is not a PDF we can read. Upload the PDF of your CV, or paste it as text instead.",
+  CORRUPTED_PDF:
+    "We couldn't read this PDF. Please check the file, or try exporting your CV again.",
+  PASSWORD_PROTECTED:
     "We can't read this PDF because it's password protected. Please upload an unlocked version of your CV.",
-  corrupt: "We couldn't read this PDF. Please check the file, or try exporting your CV again.",
-  empty: "That file is empty.",
-  "too-many-pages": `That document has more pages than a CV usually does — the limit is ${PDF_LIMITS.maxPages}.`,
-  "no-text":
+  TOO_MANY_PAGES: `That document has more pages than a CV usually does — the limit is ${PDF_LIMITS.maxPages}.`,
+  FILE_TOO_LARGE: `That file is larger than ${Math.round(PDF_LIMITS.maxFileSize / (1024 * 1024))} MB. A text CV is usually well under one.`,
+  EXTRACTION_TIMEOUT:
+    "This PDF took too long to read. If it is very long or very detailed, try exporting a simpler version of it.",
+  NO_TEXT_CONTENT:
     "This PDF has no text in it — it looks like a scan. Reading a scanned CV needs a language model, and none is configured here. Paste your CV as text instead.",
-  unreadable:
+  EXTRACTION_FAILED:
+    "We couldn't read this PDF. Please check the file, or try another version of it.",
+  UNREADABLE_RESUME:
     "We read the file, but couldn't reliably identify the sections of a CV in it. Your file is safe, and nothing was changed.",
 };
 
@@ -68,11 +81,11 @@ export async function POST(request: NextRequest) {
   const looksRight =
     file.type === "application/pdf" || file.type === "" || file.name.toLowerCase().endsWith(".pdf");
   if (!looksRight) {
-    return Response.json({ ok: false, error: MESSAGES["not-pdf"] }, { status: 400 });
+    return Response.json({ ok: false, error: MESSAGES.INVALID_PDF }, { status: 400 });
   }
 
   if (file.size > PDF_LIMITS.maxFileSize) {
-    return Response.json({ ok: false, error: MESSAGES["too-large"] }, { status: 413 });
+    return Response.json({ ok: false, error: MESSAGES.FILE_TOO_LARGE }, { status: 413 });
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());

@@ -1,4 +1,4 @@
-import { MATCH_WEIGHTS } from "./score";
+import { JOB_MATCH_WEIGHTS } from "./score";
 import type { ResumeSuggestion, SuggestionPriority, SuggestionType } from "./types";
 
 /**
@@ -62,7 +62,7 @@ const PRIORITY_RANK: Record<SuggestionPriority, number> = { high: 0, medium: 1, 
  * sorts last within its priority.
  */
 export function expectedImpact(suggestion: ResumeSuggestion): number {
-  return suggestion.affects.reduce((total, dimension) => total + MATCH_WEIGHTS[dimension], 0);
+  return suggestion.affects.reduce((total, dimension) => total + JOB_MATCH_WEIGHTS[dimension], 0);
 }
 
 /**

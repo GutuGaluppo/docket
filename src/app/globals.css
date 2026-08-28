@@ -1607,6 +1607,413 @@
     }
   }
 
+  /* ---------------------------------------------------------------------------
+     The library, and the dialogs that act on it.
+
+     `<dialog>` is used as the browser provides it: the focus trap, the Escape
+     key and the return of focus to whatever opened it are all behaviours that
+     are wrong more often than right when they are re-implemented.
+  ------------------------------------------------------------------------- */
+  .cv-dialog {
+    margin: auto;
+    width: min(94vw, 620px);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 0;
+    box-shadow: var(--paper-shadow);
+  }
+
+  .cv-dialog::backdrop {
+    background: color-mix(in oklab, var(--text) 55%, transparent);
+  }
+
+  .cv-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 86vh;
+    overflow-y: auto;
+    padding: 22px;
+  }
+
+  .cv-dialog-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .cv-dialog-close {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    line-height: 1;
+    padding: 2px 6px;
+  }
+
+  .cv-dialog-close:hover {
+    color: var(--text);
+  }
+
+  .cv-dialog-actions,
+  .cv-dialog-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+  }
+
+  /* Destructive, and drawn as such — outline and label, not colour alone. */
+  .cv-danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #fff;
+  }
+
+  .cv-danger:hover:not(:disabled) {
+    background: var(--danger);
+    filter: brightness(1.1);
+  }
+
+  .cv-library {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cv-library-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    border-radius: 2px;
+    background: var(--raised);
+    padding: 12px 14px;
+  }
+
+  .cv-library-item[data-active="true"] {
+    border-left-color: var(--accent);
+    background: var(--accent-wash);
+  }
+
+  .cv-library-main {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .cv-library-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .cv-library-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    border: 1px solid var(--accent-edge);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    text-transform: uppercase;
+  }
+
+  .cv-library-meta {
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  .cv-library-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cv-menu {
+    position: relative;
+  }
+
+  .cv-menu-trigger {
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    letter-spacing: 0.1em;
+    padding: 6px 8px;
+  }
+
+  .cv-menu-trigger:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .cv-menu-list {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    box-shadow: var(--paper-shadow);
+  }
+
+  .cv-menu-list button {
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .cv-menu-list button:hover {
+    background: var(--accent-wash);
+  }
+
+  .cv-menu-danger {
+    color: var(--danger);
+  }
+
+  /* The bar over the editor: which document is open, and the way to another. */
+  .cv-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    grid-column: 1 / -1;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 10px 14px;
+  }
+
+  .cv-bar-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .cv-bar-unsaved {
+    border: 1px dashed var(--mark-edge);
+    background: var(--mark-wash);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    text-transform: uppercase;
+  }
+
+  .cv-bar-note {
+    flex-basis: 100%;
+    border-top: 1px dashed var(--rule);
+    padding-top: 8px;
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  /* The checklist ------------------------------------------------------------ */
+  .cv-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cv-step {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: var(--text-sm);
+    color: var(--faint);
+    transition: color 0.2s ease;
+  }
+
+  .cv-step-mark {
+    width: 1.2em;
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+
+  .cv-step[data-status="active"] {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .cv-step[data-status="active"] .cv-step-mark {
+    color: var(--accent);
+    animation: cv-step-pulse 1.4s ease-in-out infinite;
+  }
+
+  .cv-step[data-status="completed"] {
+    color: var(--muted);
+  }
+
+  .cv-step[data-status="completed"] .cv-step-mark {
+    color: var(--accent);
+  }
+
+  .cv-step[data-status="error"] {
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  @keyframes cv-step-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .cv-progress-result {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    border-top: 1px dashed var(--rule);
+    padding-top: 12px;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+  }
+
+  .cv-progress-count {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--muted);
+  }
+
+  .cv-start-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  @media (forced-colors: active) {
+    .cv-library-item[data-active="true"] {
+      outline: 2px solid CanvasText;
+    }
+    .cv-step[data-status="active"] .cv-step-mark {
+      animation: none;
+    }
+  }
+
+  /* Why this figure: the arithmetic, folded away but never hidden. */
+  .cv-why-figure {
+    border-top: 1px dashed var(--rule);
+    padding-top: 10px;
+    font-size: var(--text-xs);
+  }
+
+  .cv-why-figure > summary {
+    cursor: pointer;
+    color: var(--muted);
+    list-style: none;
+  }
+
+  .cv-why-figure > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cv-why-figure > summary::before {
+    content: "▸ ";
+    font-family: var(--font-mono);
+  }
+
+  .cv-why-figure[open] > summary::before {
+    content: "▾ ";
+  }
+
+  .cv-why-figure > summary:hover {
+    color: var(--text);
+  }
+
+  .cv-why-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .cv-why-dimensions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cv-why-dimensions li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .cv-why-arithmetic {
+    font-family: var(--font-mono);
+    color: var(--text);
+  }
+
+  .cv-why-group {
+    border-left: 2px solid var(--rule);
+    padding-left: 10px;
+    line-height: 1.55;
+  }
+
+  .cv-why-group[data-tone="strong"] {
+    border-left-color: var(--accent);
+  }
+
+  .cv-why-group[data-tone="missing"] {
+    border-left-color: var(--danger);
+  }
+
+  .cv-why-group[data-tone="partial"] {
+    border-left-color: var(--mark);
+  }
+
+  .cv-why-group p {
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+
   /* Importing a PDF ---------------------------------------------------------- */
   .cv-upload {
     display: flex;

@@ -2,27 +2,21 @@ import "server-only";
 
 import { resumeElements } from "@/lib/resume/target";
 import type { Resume } from "@/lib/resume/schema";
-import { modelAnalysisSchema, type ModelAnalysis } from "@/lib/tailoring/schema";
+import { modelReadingSchema, type ModelReading } from "@/lib/tailoring/schema";
 
 /**
  * The one place this product talks to a language model.
  *
  * Written against the OpenAI-compatible chat endpoint with `fetch` and nothing
- * else. No SDK is added for it: the request is forty lines, the answer is JSON
- * that has to be re-validated anyway, and pointing `AI_BASE_URL` at a gateway
- * or at a different provider then costs an environment variable rather than a
+ * else. No SDK is added for it: the request is forty lines, the answer has to
+ * be re-validated whatever sent it, and pointing `AI_BASE_URL` at a gateway or
+ * at another provider then costs an environment variable rather than a
  * dependency swap.
  *
- * Absent a key, this module reports that it is not configured and the analysis
- * runs on the deterministic reading alone — the same way the product already
- * treats Resend, Sentry and PostHog. Nothing here throws its way into a page.
- *
- * What is never done here, and is the reason the module is this small:
- *
- *   · no CV, no advert and no prompt is ever logged, at any level;
- *   · `store: false` asks the provider not to retain the exchange;
- *   · the answer is parsed, not trusted — and then checked again by
- *     `safety.ts`, because a schema can confirm a shape and not a fact.
+ * Absent a key, this module reports that it is not configured and the reading
+ * runs on the deterministic path — the same way the product already treats
+ * Resend, Sentry and PostHog. Nothing here throws its way into a page, and no
+ * CV, advert or prompt is ever logged.
  */
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
@@ -33,6 +27,15 @@ const TIMEOUT_MS = 45_000;
 /** Truncation is a cost ceiling, and adverts have long legal footers. */
 const MAX_JOB_CHARS = 14_000;
 const MAX_RESUME_CHARS = 14_000;
+
+/**
+ * Bumped when the instructions change in a way that changes the answer.
+ *
+ * It is part of what makes a stored reading current: a reading produced by an
+ * older prompt is not a stale reading of the same documents, it is an answer to
+ * a differently phrased question.
+ */
+export const ANALYSIS_PROMPT_VERSION = "2";
 
 function apiKey(): string {
   return process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
@@ -48,63 +51,79 @@ export function modelName(): string {
 }
 
 /**
- * The rules, stated to the model as rules.
+ * What the model is asked to do, and the one thing it is not.
  *
- * This is section 26 of the brief, and it is written in the imperative because
- * every line of it is enforced somewhere else as well: the schema refuses the
- * shapes it must not send, and `groundSuggestions` deletes the claims it must
- * not make. The prompt is the cheap layer, not the only one.
+ * It reads the advert into requirements and judges each against the CV, with
+ * the lines that justify the judgement. It is never asked for a score — there
+ * is no field for one in the shape below, because a number a model chose cannot
+ * be explained, reproduced or recomputed when a bullet changes.
+ *
+ * Everything about not inventing is enforced twice more after this: the schema
+ * refuses shapes it must not send, and `safety.ts` deletes claims the CV does
+ * not support. A prompt is a request, not a guarantee.
  */
-const SYSTEM_PROMPT = `You are a careful CV editor helping one candidate adapt their CV to one job advert.
+const READING_PROMPT = `You are comparing one CV against one job advert for the candidate who wrote the CV.
 
-Absolute rules:
+Do two things.
+
+FIRST, read the advert into a list of requirements.
+- One requirement per thing being asked for. "React", "technical SEO", "internal tools", "ownership".
+- Deduplicate: an advert that says React three times is asking for React once.
+- category is one of: skill, tool, practice, experience, responsibility, domain, soft_skill.
+- importance is one of: required, important, preferred. Use the advert's own structure: what it lists under "requirements", "about you" or "must have" is required; what it lists under "nice to have", "added bonus" or "a plus" is preferred; everything else is important.
+- aliases are other ways a CV might say the same thing. "SSR" is also "server-side rendering" and "server-rendered". "Observability" is also "monitoring", "dashboards", "tracing". Be generous with aliases and specific: never an alias so broad it would match any CV.
+- sourceText is the sentence of the advert the requirement came from.
+- keywords are terms that make THIS role specific — technologies, practices, domain words. Never generic hiring vocabulary like "team", "work", "customer", "build" or "ship".
+
+SECOND, judge every requirement against the CV.
+- "strong": the CV shows the person actually did this. Paraphrase counts — "took the search rankings from a server-rendered rebuild" is strong evidence for technical SEO and for SSR.
+- "partial": mentioned, or adjacent, but not evidenced as work they did. A tool listed under Skills and never used in a role is partial for a responsibility and strong for a tool.
+- "missing": nothing in the CV supports it. Say missing rather than stretching.
+- evidence quotes the CV, with the element id from the outline where possible. A strong or partial verdict with no evidence is not allowed.
+- confidence is how sure you are of the verdict, from 0 to 1. It is not a score.
+
+THIRD, optionally propose wording changes, following these rules absolutely:
 - Never invent skills, employers, roles, responsibilities, projects, certifications, results, metrics, numbers, clients or technologies. If it is not in the CV, it does not exist.
-- If the advert requires something the CV does not evidence, report it as a gap with type "missing_requirement" and no suggestedText. Never write a rewrite that claims it.
-- Never add a number, percentage, duration or team size that does not already appear in the CV.
-- Rewrites may improve clarity, structure, ordering, concision and relevance. They may not change what the person did.
-- Keep the candidate's voice and language. Prefer concrete actions and outcomes over adjectives.
-- Never repeat a keyword to inflate coverage. A term belongs only where it is true and reads naturally.
+- A requirement the CV does not evidence is a gap. Report it as a missing requirement; never write a rewrite that claims it.
+- Never add a number, percentage, duration or team size that is not already in the CV.
+- Rewrites may improve clarity, structure, ordering and relevance. They may not change what the person did.
+- Keep the candidate's voice and language. Prefer concrete actions over adjectives.
+- Never repeat a keyword to inflate coverage.
 
-You answer with JSON only, in exactly this shape:
+Answer with JSON only, in exactly this shape:
 
 {
   "jobAnalysis": {
     "roleTitle": string,
-    "requiredSkills": [{ "text": string, "importance": "required"|"important"|"preferred", "kind": "skill", "terms": [string] }],
-    "preferredSkills": [ ...same shape... ],
-    "responsibilities": [{ "text": string, "importance": ..., "kind": "responsibility", "terms": [string] }],
-    "experienceRequirements": [{ "text": string, "importance": ..., "kind": "qualification", "terms": [string] }],
+    "requirements": [{ "id": string, "name": string, "category": string, "importance": string, "aliases": [string], "sourceText": string }],
     "keywords": [{ "text": string, "weight": "primary"|"secondary", "occurrences": number }],
     "inferredSeniority": string,
     "domain": string
   },
+  "matches": [{ "requirementId": string, "match": "strong"|"partial"|"missing", "confidence": number, "evidence": [{ "key": string, "source": "profile"|"experience"|"skills"|"project"|"education", "text": string }], "reasoning": string }],
   "suggestions": [{
     "targetSectionId": "personal"|"summary"|"experience"|"education"|"skills"|"projects"|"languages"|"certifications",
-    "targetEntryId": string?,
-    "targetFieldId": string?,
-    "targetItemId": string?,
+    "targetEntryId": string?, "targetFieldId": string?, "targetItemId": string?,
     "type": "missing_keyword"|"skill_alignment"|"experience_relevance"|"weak_wording"|"missing_evidence"|"summary_alignment"|"ats_readability"|"irrelevant_content"|"missing_requirement",
     "priority": "high"|"medium"|"low",
-    "title": string,
-    "reason": string,
-    "suggestedText": string?,
-    "relatedKeywords": [string]?,
+    "title": string, "reason": string,
+    "suggestedText": string?, "relatedKeywords": [string]?, "requirementId": string?,
     "affects": ["skillsMatch"|"experienceRelevance"|"keywordCoverage"|"roleAlignment"],
     "requiresConfirmation": boolean
   }]
 }
 
-"terms" holds the spellings that count as evidence for that requirement, so that a CV saying "TS" is credited for "TypeScript".
-Every suggestion must address an element id from the CV outline. Copy the ids exactly; never invent one.
-Do not include a score of any kind: the application computes it.`;
+Every match must name a requirement id you returned. Every suggestion must address an element id from the CV outline; copy the ids exactly and never invent one.
+Do not return a score, a percentage or a rating of any kind. The application computes those.`;
 
 /**
  * The CV, addressed.
  *
  * The model is shown the same element keys the editor renders, which is what
- * lets a recommendation come back pointing at one bullet rather than at "the
- * experience section". Empty fields are included: "this has no summary" is a
- * finding, and a document that hides its holes cannot be told about them.
+ * lets a verdict cite a line and a recommendation point at one bullet rather
+ * than at "the experience section". Empty fields are included: "this has no
+ * summary" is a finding, and a document that hides its holes cannot be told
+ * about them.
  */
 export function resumeOutline(resume: Resume): string {
   const lines = resumeElements(resume).map((element) => {
@@ -125,7 +144,7 @@ export function resumeOutline(resume: Resume): string {
 
 export type ModelFailure = "unconfigured" | "request" | "shape";
 
-export type ModelResult = { ok: true; data: ModelAnalysis } | { ok: false; reason: ModelFailure };
+export type ReadingResult = { ok: true; data: ModelReading } | { ok: false; reason: ModelFailure };
 
 /**
  * One part of a message: text, or a whole file for the model to look at — which
@@ -140,14 +159,16 @@ export type JsonResult = { ok: true; data: unknown } | { ok: false; reason: Mode
 /**
  * One JSON answer, and the only place a request leaves this application.
  *
- * Both tasks the product has — reading an advert, and reading a CV out of a
- * document — come through here, so what must be true of both is true in one
- * place: the timeout, `store: false`, the refusal to log any content, and the
- * fact that the answer is handed back unparsed for the caller to validate.
+ * Every task the product has comes through here, so what must be true of all of
+ * them is true in one place: the timeout, `store: false`, the refusal to log
+ * any content, and the fact that the answer is handed back unparsed for the
+ * caller to validate.
  */
 export async function requestJson(input: {
   system: string;
   parts: MessagePart[];
+  /** Aborts the request when the person cancels the reading it belongs to. */
+  signal?: AbortSignal;
 }): Promise<JsonResult> {
   const key = apiKey();
   if (!key) return { ok: false, reason: "unconfigured" };
@@ -158,7 +179,10 @@ export async function requestJson(input: {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      // Two ways to stop: the clock, and the person. Either ends the request.
+      signal: input.signal
+        ? AbortSignal.any([AbortSignal.timeout(TIMEOUT_MS), input.signal])
+        : AbortSignal.timeout(TIMEOUT_MS),
       body: JSON.stringify({
         model: modelName(),
         // Asked for and re-validated: the flag stops the obvious malformed
@@ -187,15 +211,19 @@ export async function requestJson(input: {
 }
 
 /**
- * Asks for one reading. Answers with a validated object or with a reason, never
- * with an exception and never with anything the caller has to sanitise.
+ * Asks for one reading: requirements, verdicts and wording changes.
+ *
+ * Answers with a validated object or with a reason, never with an exception and
+ * never with anything the caller has to sanitise.
  */
-export async function requestAnalysis(input: {
+export async function requestReading(input: {
   resume: Resume;
   jobDescription: string;
-}): Promise<ModelResult> {
+  signal?: AbortSignal;
+}): Promise<ReadingResult> {
   const answer = await requestJson({
-    system: SYSTEM_PROMPT,
+    system: READING_PROMPT,
+    signal: input.signal,
     parts: [
       {
         type: "text",
@@ -212,6 +240,6 @@ export async function requestAnalysis(input: {
 
   if (!answer.ok) return answer;
 
-  const parsed = modelAnalysisSchema.safeParse(answer.data);
+  const parsed = modelReadingSchema.safeParse(answer.data);
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, reason: "shape" };
 }

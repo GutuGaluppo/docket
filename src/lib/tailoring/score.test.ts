@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MATCH_WEIGHTS, matchLabel, overallScore, scoreDelta, toJobMatch } from "./score";
+import { JOB_MATCH_WEIGHTS, matchLabel, overallScore, scoreDelta, toJobMatch } from "./score";
 
 describe("the overall score", () => {
   it("is the weighted average of the four dimensions", () => {
@@ -16,12 +16,11 @@ describe("the overall score", () => {
   });
 
   it("weights skills and experience above keywords and role", () => {
-    expect(MATCH_WEIGHTS.skillsMatch + MATCH_WEIGHTS.experienceRelevance).toBeCloseTo(0.6);
+    expect(JOB_MATCH_WEIGHTS.skillsMatch + JOB_MATCH_WEIGHTS.experienceRelevance).toBeCloseTo(0.6);
+    // The table is checked at load as well; this is the same claim, said where
+    // somebody changing the numbers will read it.
     expect(
-      MATCH_WEIGHTS.skillsMatch +
-        MATCH_WEIGHTS.experienceRelevance +
-        MATCH_WEIGHTS.keywordCoverage +
-        MATCH_WEIGHTS.roleAlignment,
+      Object.values(JOB_MATCH_WEIGHTS).reduce((total, weight) => total + weight, 0),
     ).toBeCloseTo(1);
   });
 

@@ -2,32 +2,41 @@ import type { ResumeSectionId } from "@/lib/resume/schema";
 import type { ResumeTarget } from "@/lib/resume/target";
 
 /**
- * What a job advert turns into before anything is compared against it.
+ * What a job advert turns into before anything is compared against it, and what
+ * a comparison turns into before anything is scored.
  *
- * The advert itself is prose, and prose cannot be scored or pointed at. The
- * analysis is the structured reading of it: the things being asked for, how
- * strongly each one is asked for, and the words the advert keeps returning to.
- * Both the score and every recommendation are derived from this object, so two
- * runs that read the advert the same way score it the same way.
+ * The shape is the argument. An advert becomes a flat list of requirements,
+ * each with a category, an importance and the words that count as evidence for
+ * it; a comparison becomes one verdict per requirement, with the lines of the
+ * CV that justify it. Only then does arithmetic happen — which is what makes
+ * the figure explainable, and what stops a model from being asked to invent it.
  */
 
 export type RequirementImportance = "required" | "important" | "preferred";
 
-/** Where a requirement expects its evidence to be found in the CV. */
-export type RequirementKind = "skill" | "responsibility" | "qualification";
+/**
+ * What kind of thing is being asked for. It decides which dimension a
+ * requirement scores in, and how its evidence is judged: a tool named in a
+ * skills list is a claim worth believing, while a responsibility named there is
+ * not.
+ */
+export type RequirementCategory =
+  "skill" | "tool" | "practice" | "experience" | "responsibility" | "domain" | "soft_skill";
 
 export type JobRequirement = {
+  /** Stable within one reading of one advert. Everything downstream refers to this. */
   id: string;
-  text: string;
+  /** Short, canonical: "React", "technical SEO", "design systems". */
+  name: string;
+  category: RequirementCategory;
   importance: RequirementImportance;
-  kind: RequirementKind;
   /**
-   * The spellings that count as evidence for this requirement — "TypeScript",
-   * "TS", "typed JavaScript". This list is what makes matching approximate
-   * meaning rather than characters: the reading of the advert decides what
-   * counts, and the matcher only asks whether any of it is present.
+   * Other ways of saying it, any one of which counts as evidence. This is what
+   * makes matching semantic rather than lexical — see `equivalences.ts`.
    */
-  terms: string[];
+  aliases: string[];
+  /** The sentence of the advert it came from, kept so the reading can be justified. */
+  sourceText: string;
 };
 
 export type KeywordWeight = "primary" | "secondary";
@@ -38,17 +47,71 @@ export type JobKeyword = {
   weight: KeywordWeight;
   /** How often the advert says it. Repetition is the advert's own emphasis. */
   occurrences: number;
+  /**
+   * The other ways of saying it, so coverage is a question about the
+   * terminology rather than about spelling — section 17 forbids resting any of
+   * this on substring matching.
+   */
+  aliases?: string[];
 };
 
 export type JobAnalysis = {
   roleTitle: string;
-  requiredSkills: JobRequirement[];
-  preferredSkills: JobRequirement[];
-  responsibilities: JobRequirement[];
-  experienceRequirements: JobRequirement[];
+  /** One flat list: the category says what each one is. */
+  requirements: JobRequirement[];
   keywords: JobKeyword[];
   inferredSeniority: string;
   domain: string;
+};
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How well one requirement is answered. Three states rather than a number,
+ * because a classifier — human or model — can tell these apart reliably and
+ * cannot reliably tell 0.62 from 0.71.
+ */
+export type RequirementMatch = "strong" | "partial" | "missing";
+
+/** A line of the CV that justifies a verdict. */
+export type MatchEvidence = {
+  /** The addressable element it came from, when it came from one. */
+  key?: string;
+  target?: ResumeTarget;
+  source: "profile" | "experience" | "skills" | "project" | "education";
+  text: string;
+};
+
+export type RequirementMatchResult = {
+  requirementId: string;
+  match: RequirementMatch;
+  evidence: MatchEvidence[];
+  /**
+   * How sure the classifier is of the verdict — not how many points it is
+   * worth. A strong match at 0.7 confidence still scores as a strong match.
+   */
+  confidence: number;
+  /** One short sentence, fit to show a person. Never a chain of thought. */
+  reasoning?: string;
+};
+
+/**
+ * The three things about a CV that are true of the document as a whole rather
+ * than of any one requirement: whether it is written as this role, at this
+ * level, in this field. Null where the advert did not say.
+ */
+export type RoleSignals = {
+  /** How much of the advert's job title the CV's own title answers, 0 to 1. */
+  title: number | null;
+  seniority: number | null;
+  domain: number | null;
+};
+
+export type CoverageReport = {
+  requirements: RequirementMatchResult[];
+  /** Keyword ids found in the CV. */
+  keywords: string[];
+  roleSignals: RoleSignals;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -65,11 +128,45 @@ export type JobMatchDimension =
  */
 export type JobMatch = { overallScore: number } & Record<JobMatchDimension, number | null>;
 
+/** One requirement's arithmetic, kept so the figure can be taken apart. */
+export type Contribution = {
+  requirementId: string;
+  name: string;
+  importance: RequirementImportance;
+  match: RequirementMatch;
+  /** What the requirement was worth. */
+  weight: number;
+  /** What it earned: weight × the value of its match. */
+  earned: number;
+};
+
+export type DimensionExplanation = {
+  dimension: JobMatchDimension;
+  score: number | null;
+  earned: number;
+  possible: number;
+  contributions: Contribution[];
+};
+
+/**
+ * Everything needed to answer "why is this Job Match 69%?" without re-running
+ * anything: what each dimension was made of, and where the points went.
+ */
+export type JobMatchExplanation = {
+  dimensions: DimensionExplanation[];
+  strong: string[];
+  partial: string[];
+  missing: string[];
+  keywords: { matched: string[]; missed: string[] };
+  /** Set when the arithmetic disagrees with the evidence — see `sanityCheck`. */
+  warnings: string[];
+};
+
 /**
  * `idle`    — not enough of a CV or an advert to compare.
  * `analyzing` — a reading is in flight.
  * `ready`   — the figure on screen describes the document on screen.
- * `stale`   — the CV changed after the last reading of the advert.
+ * `stale`   — the CV, the advert or the scoring changed after the last reading.
  * `error`   — the reading failed; the editor keeps everything it had.
  */
 export type JobMatchStatus = "idle" | "analyzing" | "ready" | "stale" | "error";
@@ -119,6 +216,8 @@ export type ResumeSuggestion = {
   suggestedText?: string;
 
   relatedKeywords?: string[];
+  /** The requirement this came from, so a gap and its advice cannot disagree. */
+  requirementId?: string;
   /** Which parts of the score this could move. Empty when that is not knowable. */
   affects: JobMatchDimension[];
   /**
@@ -133,26 +232,13 @@ export type ResumeSuggestion = {
 
 /* -------------------------------------------------------------------------- */
 
-/** How well one requirement is answered by the CV as it currently reads. */
-export type RequirementCoverage = {
-  requirementId: string;
-  status: "strong" | "partial" | "missing";
-  /** The spelling that was found, when one was. */
-  matchedTerm?: string;
-};
-
-export type CoverageReport = {
-  requirements: RequirementCoverage[];
-  /** Keyword ids present in the CV. */
-  keywords: string[];
-};
-
 /** One reading of one CV against one advert. */
 export type TailoringAnalysis = {
   jobAnalysis: JobAnalysis;
   suggestions: ResumeSuggestion[];
   jobMatch: JobMatch;
   coverage: CoverageReport;
+  explanation: JobMatchExplanation;
   source: SuggestionSource;
   /** ISO timestamp of the reading. */
   analyzedAt: string;

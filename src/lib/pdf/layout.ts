@@ -1,4 +1,20 @@
-import type { TextRun } from "./content";
+/**
+ * A piece of text and where it sits on the page.
+ *
+ * Deliberately not the shape any library returns: this module is the one that
+ * knows how a CV is laid out, and it should keep working when the thing that
+ * reads the file changes. The extraction service maps whatever it gets into
+ * this before calling in.
+ */
+export type PositionedText = {
+  text: string;
+  x: number;
+  /** Higher is further up the page, as PDF user space has it. */
+  y: number;
+  width: number;
+  /** Effective font size, used to judge what counts as a gap. */
+  size: number;
+};
 
 /**
  * Coordinates back into reading order.
@@ -47,7 +63,10 @@ const MIN_GUTTER = 0.045;
 /** Neither side of a gutter may hold fewer lines than this, or it is not a column. */
 const MIN_COLUMN_LINES = 4;
 
-export function layoutPage(runs: readonly TextRun[]): { lines: PageLine[]; columns: number } {
+export function layoutPage(runs: readonly PositionedText[]): {
+  lines: PageLine[];
+  columns: number;
+} {
   const drawn = runs.filter((run) => run.text.length > 0);
   if (drawn.length === 0) return { lines: [], columns: 0 };
 
@@ -75,9 +94,9 @@ export function layoutPage(runs: readonly TextRun[]): { lines: PageLine[]; colum
 }
 
 /** Runs sharing a baseline, joined in the order they sit on it. */
-function assemble(runs: readonly TextRun[]): PageLine[] {
+function assemble(runs: readonly PositionedText[]): PageLine[] {
   const sorted = [...runs].sort((a, b) => b.y - a.y || a.x - b.x);
-  const groups: TextRun[][] = [];
+  const groups: PositionedText[][] = [];
 
   for (const run of sorted) {
     const current = groups[groups.length - 1];
@@ -211,4 +230,20 @@ function medianPitch(lines: readonly PageLine[]): number {
 
   gaps.sort((a, b) => a - b);
   return gaps[Math.floor(gaps.length / 2)]!;
+}
+
+/**
+ * One page, read in the order a person reads it.
+ *
+ * The whole reason the positional pass exists: flat extraction walks the
+ * content in the order the producer wrote it, and for a CV with a sidebar that
+ * is not reading order. Handed the positions, this puts each column back
+ * together and reports how many it found.
+ */
+export function pageReadingOrder(items: readonly PositionedText[]): {
+  text: string;
+  columns: number;
+} {
+  const { lines, columns } = layoutPage(items);
+  return { text: pageText(lines).trim(), columns };
 }

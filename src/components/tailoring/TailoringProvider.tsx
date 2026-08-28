@@ -16,9 +16,10 @@ import {
 import type { Resume } from "@/lib/resume/schema";
 import type { SuggestionFilter } from "@/lib/tailoring/queue";
 import { initialState, tailoringReducer, type TailoringState } from "@/lib/tailoring/state";
+import { analysisSchema } from "@/lib/tailoring/schema";
+import type { AnalysisEvent } from "@/lib/tailoring/steps";
 import type { ResumeChange, ResumeSuggestion, TailoringAnalysis } from "@/lib/tailoring/types";
 import {
-  analyzeResumeAgainstJob,
   applyResumeSuggestion,
   saveResume,
   setSuggestionStatus,
@@ -61,8 +62,14 @@ export type TailoringContextValue = {
   startEditing: (suggestionId: string | null) => void;
 
   editResume: (resume: Resume) => void;
+  /** Flushes the debounce now. Answers whether the document reached the server. */
+  saveNow: () => Promise<boolean>;
+  /** Throws away what the debounce was holding, when somebody says to. */
+  discardUnsaved: () => void;
   setJobSource: (input: { applicationId: string | null; text: string }) => void;
   runAnalysis: () => void;
+  /** Stops a reading in flight. Real: it aborts the request. */
+  cancelAnalysis: () => void;
 
   apply: (suggestion: ResumeSuggestion, text: string, edited: boolean) => void;
   dismiss: (suggestionId: string) => void;
@@ -145,6 +152,24 @@ export function TailoringProvider({
     return () => window.removeEventListener("beforeunload", warn);
   }, [unsaved]);
 
+  const saveNow = useCallback(async () => {
+    const document = pending.current;
+    if (!document) {
+      setUnsaved(false);
+      return true;
+    }
+
+    pending.current = null;
+    const saved = await saveResume({ id: data.resumeId, resume: document });
+    if (saved.ok) setUnsaved(false);
+    return saved.ok;
+  }, [data.resumeId]);
+
+  const discardUnsaved = useCallback(() => {
+    pending.current = null;
+    setUnsaved(false);
+  }, []);
+
   const editResume = useCallback((resume: Resume) => {
     pending.current = resume;
     setUnsaved(true);
@@ -152,8 +177,40 @@ export function TailoringProvider({
   }, []);
 
   /* Reading the advert ------------------------------------------------------ */
+
+  /**
+   * The reading is a streamed request rather than an action call.
+   *
+   * The server writes a line as it reaches each stage, and those lines are the
+   * only thing that moves the checklist — nothing here advances it on a timer.
+   * Holding the controller is also what makes Cancel real: aborting the fetch
+   * ends the request, and with it the model call inside it.
+   */
+  const inFlight = useRef<AbortController | null>(null);
+
+  /**
+   * Which reading the interface is waiting for.
+   *
+   * A person can start a reading, edit the CV and start another before the
+   * first one answers — and the first one answers about a document that no
+   * longer exists. Only the newest request may touch the state; anything that
+   * arrives late is dropped, which is the whole of section 53.
+   */
+  const requestId = useRef(0);
+
   const runAnalysis = useCallback(() => {
+    // One reading at a time. A second press while one is in flight would spend
+    // a second request to answer the same question.
+    if (inFlight.current) return;
+
+    const controller = new AbortController();
+    inFlight.current = controller;
+    requestId.current += 1;
+    const thisRequest = requestId.current;
+    const isCurrent = () => requestId.current === thisRequest;
+
     dispatch({ type: "analyzing" });
+
     startTransition(async () => {
       // Whatever is in the editor is what gets read, debounce or no debounce.
       const document = pending.current;
@@ -163,21 +220,118 @@ export function TailoringProvider({
         if (saved.ok) setUnsaved(false);
       }
 
-      const result = await analyzeResumeAgainstJob({
-        resumeId: data.resumeId,
-        applicationId: state.applicationId ?? undefined,
-        jobDescription: state.jobDescription,
-      });
+      try {
+        const response = await fetch("/cv/analyze", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            resumeId: data.resumeId,
+            applicationId: state.applicationId ?? undefined,
+            jobDescription: state.jobDescription,
+          }),
+        });
 
-      if (!result.ok) {
-        dispatch({ type: "failed", error: result.error });
-        return;
+        if (!response.ok || !response.body) {
+          const failure = (await response.json().catch(() => null)) as { error?: string } | null;
+          if (isCurrent()) {
+            dispatch({
+              type: "failed",
+              error: failure?.error ?? "We couldn't complete the analysis.",
+            });
+          }
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finished = false;
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            let message: {
+              type?: string;
+              step?: AnalysisEvent["step"];
+              error?: string;
+              analysisId?: string;
+              analysis?: unknown;
+            };
+            try {
+              message = JSON.parse(line) as typeof message;
+            } catch {
+              continue;
+            }
+
+            if (!isCurrent()) continue;
+
+            if (message.type === "step" && message.step) {
+              dispatch({ type: "step", event: { step: message.step, status: "active" } });
+              continue;
+            }
+
+            if (message.type === "error") {
+              finished = true;
+              dispatch({
+                type: "failed",
+                error: message.error ?? "We couldn't complete the analysis.",
+              });
+              continue;
+            }
+
+            if (message.type === "done") {
+              // The answer is validated here as well as on the way into the
+              // database: a stream is a public endpoint's output, not a promise.
+              const validated = analysisSchema.safeParse(message.analysis);
+              if (!validated.success) {
+                finished = true;
+                dispatch({ type: "failed", error: "That reading could not be understood." });
+                continue;
+              }
+
+              finished = true;
+              setAnalysisId(message.analysisId ?? null);
+              dispatch({
+                type: "analyzed",
+                analysis: validated.data as TailoringAnalysis,
+              });
+            }
+          }
+        }
+
+        // The stream ended without saying anything conclusive: the connection
+        // dropped, or the server stopped. Either way the reading did not land.
+        if (!finished && !controller.signal.aborted && isCurrent()) {
+          dispatch({ type: "failed", error: "The analysis stopped before it finished." });
+        }
+      } catch {
+        if (!isCurrent()) return;
+        // An abort is the person pressing Cancel, and is not a failure.
+        if (controller.signal.aborted) dispatch({ type: "cancelled" });
+        else dispatch({ type: "failed", error: "We couldn't complete the analysis." });
+      } finally {
+        if (isCurrent()) inFlight.current = null;
       }
-
-      setAnalysisId(result.analysisId);
-      dispatch({ type: "analyzed", analysis: result.analysis });
     });
   }, [data.resumeId, state.applicationId, state.jobDescription]);
+
+  const cancelAnalysis = useCallback(() => {
+    // Bumping the id first is what makes the abort final: anything already in
+    // flight is no longer the current request, whatever it goes on to say.
+    requestId.current += 1;
+    inFlight.current?.abort();
+    inFlight.current = null;
+    dispatch({ type: "cancelled" });
+  }, []);
 
   /* Acting on a recommendation ---------------------------------------------- */
   const apply = useCallback(
@@ -278,9 +432,12 @@ export function TailoringProvider({
       setFilter: (filter) => dispatch({ type: "filter", filter }),
       startEditing: (suggestionId) => dispatch({ type: "edit", suggestionId }),
       editResume,
+      saveNow,
+      discardUnsaved,
       setJobSource: ({ applicationId, text }) =>
         dispatch({ type: "job-description", applicationId, text }),
       runAnalysis,
+      cancelAnalysis,
       apply,
       dismiss,
       restore,
@@ -292,7 +449,10 @@ export function TailoringProvider({
       data.modelConfigured,
       analysisId,
       unsaved,
+      cancelAnalysis,
       editResume,
+      saveNow,
+      discardUnsaved,
       runAnalysis,
       apply,
       dismiss,

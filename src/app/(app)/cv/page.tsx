@@ -3,12 +3,9 @@ import { Suspense } from "react";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { CvSkeleton } from "@/components/Skeleton";
-import { JobMatchPanel } from "@/components/tailoring/JobMatchPanel";
-import { JobSourcePanel } from "@/components/tailoring/JobSourcePanel";
-import { ResumeEditor } from "@/components/tailoring/ResumeEditor";
-import { ResumeStart } from "@/components/tailoring/ResumeStart";
-import { SuggestionPanel } from "@/components/tailoring/SuggestionPanel";
-import { TailoringProvider } from "@/components/tailoring/TailoringProvider";
+import { CvWorkspace } from "@/components/tailoring/CvWorkspace";
+import { analysisFreshness, fingerprintJob, fingerprintResume } from "@/lib/tailoring/fingerprint";
+import { JOB_MATCH_SCORING_VERSION } from "@/lib/tailoring/score";
 import { requireScope } from "@/server/auth/session";
 import { listAdvertSources } from "@/server/db/queries/applications";
 import {
@@ -16,15 +13,16 @@ import {
   getPendingImport,
   getResume,
   listChanges,
+  listResumes,
 } from "@/server/db/queries/resumes";
-import { isModelConfigured } from "@/server/tailoring/model";
+import { ANALYSIS_PROMPT_VERSION, isModelConfigured } from "@/server/tailoring/model";
 
 export const metadata: Metadata = { title: "CV" };
 
 /**
- * One CV, one advert, two panels.
+ * One CV, one advert, two panels — and the library the CV was chosen from.
  *
- * Everything on this screen is behind a single boundary rather than three,
+ * Everything on this screen is behind a single boundary rather than several,
  * because the parts do not stand up alone: a Job Match with no document under
  * it and no recommendations beside it is a number floating on a page. The
  * heading and its explanation are printed immediately, and the workspace
@@ -33,80 +31,93 @@ export const metadata: Metadata = { title: "CV" };
 async function loadWorkspace() {
   const scope = await requireScope();
 
-  const [resume, sources] = await Promise.all([getResume(scope), listAdvertSources(scope)]);
+  const [resume, sources, library] = await Promise.all([
+    getResume(scope),
+    listAdvertSources(scope),
+    listResumes(scope),
+  ]);
 
   // A reading somebody started and walked away from is reopened where they left
   // it, rather than being lost with the tab that was showing it.
-  if (!resume) return { resume: null, sources, pending: await getPendingImport(scope) } as const;
+  if (!resume) {
+    return { resume: null, sources, library, pending: await getPendingImport(scope) } as const;
+  }
 
   const [analysis, history] = await Promise.all([
     getLatestAnalysis(scope, resume.id),
     listChanges(scope, resume.id),
   ]);
 
-  return { resume, sources, analysis, history } as const;
+  return { resume, sources, library, analysis, history, pending: null } as const;
 }
 
 async function Workspace({ data }: { data: ReturnType<typeof loadWorkspace> }) {
   const loaded = await data;
-  const { resume, sources } = loaded;
+  const { resume, sources, library } = loaded;
+
+  const pendingImport = loaded.pending
+    ? {
+        importId: loaded.pending.id,
+        fileName: loaded.pending.fileName,
+        pageCount: loaded.pending.pageCount,
+        result: loaded.pending.result,
+      }
+    : null;
 
   if (!resume) {
-    const pending = loaded.pending;
     return (
-      <ResumeStart
-        pending={
-          pending
-            ? {
-                importId: pending.id,
-                fileName: pending.fileName,
-                pageCount: pending.pageCount,
-                result: pending.result,
-              }
-            : null
-        }
-      />
+      <CvWorkspace data={null} library={library} sources={sources} pendingImport={pendingImport} />
     );
   }
 
-  const { analysis, history } = loaded;
+  const analysis = loaded.analysis;
 
   /**
-   * A reading describes the document as it was when it ran. If the document has
-   * been saved since, the figure on screen is about a CV that no longer exists,
-   * and the panel has to say so instead of quietly being wrong.
+   * A figure describes one CV read against one advert. Both can have moved
+   * since, and comparing fingerprints is what says so exactly — a saved
+   * document that changed nothing is not stale, and a document restored to what
+   * it said is not either.
    */
-  const stale = Boolean(
-    analysis && resume.updatedAt.getTime() > analysis.createdAt.getTime() + 1_000,
-  );
+  const freshness = analysis
+    ? analysisFreshness({
+        analysis: {
+          resumeId: analysis.resumeId,
+          resumeFingerprint: analysis.resumeFingerprint,
+          jobFingerprint: analysis.jobFingerprint,
+          scoringVersion: analysis.scoringVersion,
+          promptVersion: analysis.promptVersion,
+        },
+        current: {
+          resumeId: resume.id,
+          resumeFingerprint: fingerprintResume(resume.content),
+          jobFingerprint: fingerprintJob(analysis.jobDescription),
+          scoringVersion: JOB_MATCH_SCORING_VERSION,
+          promptVersion: ANALYSIS_PROMPT_VERSION,
+        },
+      })
+    : null;
+
+  // A reading of another document is not a stale version of this one's figure.
+  // It is an answer to a different question, and it is not shown at all.
+  const usable = analysis && freshness !== "other-resume" ? analysis : null;
 
   return (
-    <TailoringProvider
+    <CvWorkspace
       data={{
         resumeId: resume.id,
         resume: resume.content,
-        jobDescription: analysis?.jobDescription ?? "",
-        applicationId: analysis?.applicationId ?? null,
-        analysisId: analysis?.id ?? null,
-        analysis: analysis?.analysis ?? null,
-        history: history ?? [],
+        jobDescription: usable?.jobDescription ?? "",
+        applicationId: usable?.applicationId ?? null,
+        analysisId: usable?.id ?? null,
+        analysis: usable?.analysis ?? null,
+        history: loaded.history ?? [],
         modelConfigured: isModelConfigured(),
-        stale,
+        stale: Boolean(usable) && freshness !== "current",
       }}
-    >
-      <div className="cv-layout">
-        <div className="cv-head">
-          <JobMatchPanel />
-          <JobSourcePanel sources={sources} />
-        </div>
-
-        <main className="cv-main" aria-label="Your CV">
-          <ResumeEditor />
-        </main>
-
-        <SuggestionPanel />
-      </div>
-    </TailoringProvider>
+      library={library}
+      sources={sources}
+      pendingImport={pendingImport}
+    />
   );
 }
 

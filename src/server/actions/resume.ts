@@ -2,44 +2,47 @@
 
 import { revalidatePath } from "next/cache";
 
+import { cloneResume } from "@/lib/resume/edit";
 import { blankResume, type Resume } from "@/lib/resume/schema";
 import { parseResumeText } from "@/lib/resume/parse";
 import { hasResumeContent } from "@/lib/resume/text";
 import { applySuggestion, revertChange } from "@/lib/tailoring/apply";
 import type { JobMatch, ResumeChange, TailoringAnalysis } from "@/lib/tailoring/types";
 import {
-  analyzeSchema,
   applySuggestionSchema,
   confirmImportSchema,
   createResumeSchema,
   discardImportSchema,
+  duplicateResumeSchema,
+  renameResumeSchema,
   replaceResumeSchema,
+  resumeIdSchema,
   saveResumeSchema,
   suggestionStatusSchema,
   undoChangeSchema,
 } from "@/lib/validation/resume";
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
-import { canAnalyzeResume } from "@/server/billing/limits";
-import { getEntry } from "@/server/db/queries/applications";
 import {
   confirmImport,
-  countAnalysesThisMonth,
   createResume,
-  deleteImport,
-  getImport,
   deleteChange,
+  deleteImport,
+  deleteResume,
+  duplicateResume,
   getAnalysis,
   getChange,
+  getImport,
   getResume,
+  getResumeById,
   recordChange,
+  renameResume,
   replaceResumeDocument,
   saveResumeContent,
-  saveAnalysis,
+  setActiveResume,
   updateAnalysisResult,
 } from "@/server/db/queries/resumes";
 import type { Scope } from "@/server/db/queries/scope";
-import { analyze, recompute } from "@/server/tailoring/analyze";
-import { isModelConfigured, modelName } from "@/server/tailoring/model";
+import { recompute } from "@/server/tailoring/analyze";
 
 /**
  * Every write the CV editor makes, and the order they all follow: session,
@@ -85,14 +88,123 @@ export async function createResumeDocument(input: unknown): Promise<CreateResume
   const parsed = createResumeSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "That CV could not be read." };
 
-  const existing = await getResume(scope);
-  if (existing) return { ok: false, error: "There is already a CV on this account." };
-
   const content = parsed.data.text.trim() ? parseResumeText(parsed.data.text) : blankResume();
-  const record = await createResume(scope, { title: parsed.data.title, content });
+  const record = await createResume(scope, {
+    title: parsed.data.title,
+    content,
+    source: "manual",
+  });
+
+  // A document nobody is looking at is not much use: whatever was just created
+  // is what the editor opens on.
+  await setActiveResume(scope, record.id);
 
   revalidatePath("/cv");
   return { ok: true, id: record.id, title: record.title, resume: record.content };
+}
+
+export type SelectResumeResult = { ok: true } | ResumeError;
+
+/**
+ * Which CV the editor opens on.
+ *
+ * A pointer on the account rather than a flag on the rows: two rows can both
+ * claim to be active and only one of them can be. Switching is always explicit
+ * — nothing here ever chooses a document on somebody's behalf.
+ */
+export async function selectResume(input: unknown): Promise<SelectResumeResult> {
+  const scope = await scopeOrError();
+  if (isError(scope)) return scope;
+
+  const parsed = resumeIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "That CV could not be opened." };
+
+  const chosen = await setActiveResume(scope, parsed.data.id);
+  if (!chosen) return { ok: false, error: "That CV was not found." };
+
+  revalidatePath("/cv");
+  return { ok: true };
+}
+
+export type RenameResumeResult = { ok: true; title: string } | ResumeError;
+
+export async function renameResumeDocument(input: unknown): Promise<RenameResumeResult> {
+  const scope = await scopeOrError();
+  if (isError(scope)) return scope;
+
+  const parsed = renameResumeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "That name could not be saved." };
+  }
+
+  const renamed = await renameResume(scope, parsed.data.id, parsed.data.title);
+  if (!renamed) return { ok: false, error: "That CV was not found." };
+
+  revalidatePath("/cv");
+  return { ok: true, title: parsed.data.title };
+}
+
+export type DuplicateResumeResult = { ok: true; id: string; title: string } | ResumeError;
+
+/**
+ * A copy that shares nothing with the document it came from.
+ *
+ * This is what "save as a new version" is made of, and the reason section 10
+ * asks for it: a CV tailored to one advert is not the CV to send to the next
+ * one, and the way to keep both is to have both. Every id inside the copy is
+ * minted again, so a recommendation aimed at one document can never resolve
+ * against the other.
+ */
+export async function duplicateResumeDocument(input: unknown): Promise<DuplicateResumeResult> {
+  const scope = await scopeOrError();
+  if (isError(scope)) return scope;
+
+  const parsed = duplicateResumeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "That CV could not be copied." };
+
+  const source = await getResumeById(scope, parsed.data.id);
+  if (!source) return { ok: false, error: "That CV was not found." };
+
+  const title = parsed.data.title?.trim() || `${source.title} copy`;
+  const copy = await duplicateResume(scope, source.id, {
+    title: title.slice(0, 120),
+    content: cloneResume(source.content),
+  });
+
+  if (!copy) return { ok: false, error: "That CV could not be copied." };
+  if (parsed.data.activate) await setActiveResume(scope, copy.id);
+
+  revalidatePath("/cv");
+  return { ok: true, id: copy.id, title: copy.title };
+}
+
+export type DeleteResumeResult = { ok: true } | ResumeError;
+
+/**
+ * Permanent, and said so on the button that does it.
+ *
+ * Everything belonging to this document alone goes with it — its readings, its
+ * change history, and the PDF it was imported from — because the interface
+ * calls this permanent deletion and section 47 is explicit that what the
+ * interface says has to be what happens. What is shared with anything else, the
+ * entries in the register its readings pointed at, is untouched.
+ *
+ * Deleting the document the editor was open on clears the pointer rather than
+ * moving it: landing on the library is a legitimate place to be, and quietly
+ * opening a different CV is the kind of silent switch this feature does not do.
+ */
+export async function deleteResumeDocument(input: unknown): Promise<DeleteResumeResult> {
+  const scope = await scopeOrError();
+  if (isError(scope)) return scope;
+
+  const parsed = resumeIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "That CV could not be deleted." };
+
+  const removed = await deleteResume(scope, parsed.data.id);
+  if (!removed) return { ok: false, error: "That CV was not found." };
+
+  revalidatePath("/cv");
+  return { ok: true };
 }
 
 export type ReplaceResumeResult = { ok: true; resume: Resume } | ResumeError;
@@ -160,27 +272,50 @@ export async function confirmResumeImport(input: unknown): Promise<ConfirmImport
   if (!record) return { ok: false, error: "That import was not found." };
 
   const content = parsed.data.resume;
-  const existing = await getResume(scope);
+  const active = await getResume(scope);
 
-  if (existing && hasResumeContent(existing.content)) {
-    return {
-      ok: false,
-      error: "There is already a CV on this account, so this import was not applied.",
-    };
-  }
+  /**
+   * An empty document is a false start rather than a CV: somebody took the
+   * "create one manually" door, changed their mind and uploaded instead. The
+   * import lands in it rather than beside it, so the library does not collect
+   * blanks. Anything with writing in it is left alone and this becomes a second
+   * document — which is the point of having a library at all.
+   */
+  const reuse = active && !hasResumeContent(active.content) ? active : null;
 
-  const resumeId = existing
-    ? (await replaceResumeDocument(scope, existing.id, content))
-      ? existing.id
+  const resumeId = reuse
+    ? (await replaceResumeDocument(scope, reuse.id, content))
+      ? reuse.id
       : null
-    : (await createResume(scope, { title: record.fileName || "My CV", content })).id;
+    : (
+        await createResume(scope, {
+          title: documentName(record.fileName),
+          content,
+          source: "pdf",
+          originalFileName: record.fileName,
+        })
+      ).id;
 
   if (!resumeId) return { ok: false, error: "That CV could not be saved." };
 
   await confirmImport(scope, record.id, resumeId);
+  await setActiveResume(scope, resumeId);
 
   revalidatePath("/cv");
   return { ok: true, resume: content };
+}
+
+/**
+ * A file name, read as a name.
+ *
+ * "Augusto_Galuppo_CV.pdf" is what the file is called; "Augusto Galuppo CV" is
+ * what the document is called. Nobody should have to name a CV before importing
+ * one, so this is the opening guess and renaming it is one click away.
+ */
+function documentName(fileName: string): string {
+  const withoutExtension = fileName.replace(/\.pdf$/i, "");
+  const spaced = withoutExtension.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return (spaced || "My CV").slice(0, 120);
 }
 
 export type DiscardImportResult = { ok: true } | ResumeError;
@@ -220,82 +355,6 @@ export async function saveResume(input: unknown): Promise<SaveResumeResult> {
   if (!saved) return { ok: false, error: "That CV was not found." };
 
   return { ok: true };
-}
-
-/* -------------------------------------------------------------------------- */
-
-export type AnalyzeResult =
-  | {
-      ok: true;
-      analysisId: string;
-      jobDescription: string;
-      applicationId: string | null;
-      analysis: TailoringAnalysis;
-    }
-  | ResumeError;
-
-/**
- * Reads one CV against one advert. The only action that can cost money, and
- * the only one the monthly cap counts.
- */
-export async function analyzeResumeAgainstJob(input: unknown): Promise<AnalyzeResult> {
-  const scope = await scopeOrError();
-  if (isError(scope)) return scope;
-
-  const parsed = analyzeSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "That request could not be read." };
-
-  const resume = await getResume(scope);
-  if (!resume || resume.id !== parsed.data.resumeId) {
-    return { ok: false, error: "That CV was not found." };
-  }
-
-  // The register is the record: when an entry is named, its stored advert is
-  // the one read, whatever the browser sent alongside it.
-  let jobDescription = parsed.data.jobDescription;
-  let applicationId: string | null = null;
-
-  if (parsed.data.applicationId) {
-    const entry = await getEntry(scope, parsed.data.applicationId);
-    if (!entry) return { ok: false, error: "That entry was not found." };
-    if (!entry.jobDescription) {
-      return { ok: false, error: "That entry has no job description stored with it." };
-    }
-    jobDescription = entry.jobDescription;
-    applicationId = entry.id;
-  }
-
-  const used = await countAnalysesThisMonth(scope);
-  const verdict = await canAnalyzeResume(scope, used);
-  if (!verdict.allowed) return { ok: false, error: verdict.reason };
-
-  const result = await analyze({ resume: resume.content, jobDescription });
-  if (!result.ok) {
-    return {
-      ok: false,
-      error:
-        result.reason === "empty-resume"
-          ? "There is not enough in the CV yet to compare against anything."
-          : "Paste the job description — there is not enough of it to read.",
-    };
-  }
-
-  const record = await saveAnalysis(scope, {
-    resumeId: resume.id,
-    applicationId,
-    jobDescription,
-    analysis: result.analysis,
-    model: result.analysis.source === "model" && isModelConfigured() ? modelName() : "heuristic",
-  });
-
-  revalidatePath("/cv");
-  return {
-    ok: true,
-    analysisId: record.id,
-    jobDescription,
-    applicationId,
-    analysis: record.analysis,
-  };
 }
 
 /* -------------------------------------------------------------------------- */

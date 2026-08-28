@@ -1,4 +1,3 @@
-import { detectStack } from "@/lib/stack-detector";
 import type { Resume } from "@/lib/resume/schema";
 import {
   resumeElements,
@@ -7,29 +6,29 @@ import {
   type ResumeTarget,
 } from "@/lib/resume/target";
 
-import { requirementsOf } from "./coverage";
 import type {
   CoverageReport,
   JobAnalysis,
+  JobMatchDimension,
   JobRequirement,
+  RequirementCategory,
   ResumeSuggestion,
   SuggestionPriority,
 } from "./types";
 
 /**
- * The recommendations that can be made without writing a word of new prose.
+ * The recommendations that follow from the comparison itself.
  *
- * Everything here is a statement about what is or is not in the document — a
- * requirement with no evidence, a claim with no example, a bullet that opens
- * with a hedge — and none of it carries a rewrite. That is the deliberate line:
- * a deterministic reading can point at a gap truthfully, but it cannot phrase
- * someone's experience for them, and inventing a phrasing is exactly the
- * failure the whole feature is built to avoid. Rewrites come from the model,
- * and even those are checked before they are offered (see `safety.ts`).
+ * Every gap here is a requirement the scoring already counted as unanswered, so
+ * the panel and the figure cannot contradict each other: a Skills Match of 95%
+ * beside "you are missing almost every core skill" is not a wording problem, it
+ * is two different analyses being shown at once. There is one analysis, and
+ * this reads it.
  *
- * A suggestion without `suggestedText` is still actionable: the reader edits
- * the field, or opens Edit and writes their own version, and the score is
- * recomputed from what they actually wrote.
+ * Nothing here carries a rewrite. A deterministic pass can point at a gap
+ * truthfully and cannot phrase someone's experience for them; the model's
+ * recommendations arrive separately and are checked before they are offered
+ * (see `safety.ts`).
  */
 
 type Input = { resume: Resume; analysis: JobAnalysis; coverage: CoverageReport };
@@ -58,9 +57,7 @@ function headline(text: string, max = 68): string {
   return `${cut.slice(0, cut.lastIndexOf(" ") > 20 ? cut.lastIndexOf(" ") : max)}…`;
 }
 
-function target(
-  element: ResumeElement,
-): Pick<ResumeSuggestion, "targetSectionId" | "targetEntryId" | "targetFieldId" | "targetItemId"> {
+function target(element: ResumeElement) {
   return {
     targetSectionId: element.target.sectionId,
     targetEntryId: element.target.entryId,
@@ -69,109 +66,95 @@ function target(
   };
 }
 
-function sectionTarget(sectionId: ResumeTarget["sectionId"]) {
-  return { targetSectionId: sectionId };
-}
+const sectionTarget = (sectionId: ResumeTarget["sectionId"]) => ({ targetSectionId: sectionId });
 
-/** The first bullet of the most recent role — where evidence for a skill belongs. */
-function firstExperienceBullet(elements: ResumeElement[]): ResumeElement | null {
-  return (
-    elements.find(
-      (element) => element.target.sectionId === "experience" && element.target.itemId,
-    ) ?? null
-  );
-}
+const priorityOf = (requirement: JobRequirement): SuggestionPriority =>
+  requirement.importance === "required"
+    ? "high"
+    : requirement.importance === "important"
+      ? "medium"
+      : "low";
 
-function priorityOf(requirement: JobRequirement): SuggestionPriority {
-  if (requirement.importance === "required") return "high";
-  if (requirement.importance === "important") return "medium";
-  return "low";
-}
+/** Which dimension a requirement scores in — the same table `score.ts` uses. */
+const DIMENSION_OF: Record<RequirementCategory, JobMatchDimension> = {
+  skill: "skillsMatch",
+  tool: "skillsMatch",
+  practice: "skillsMatch",
+  experience: "experienceRelevance",
+  responsibility: "experienceRelevance",
+  domain: "experienceRelevance",
+  soft_skill: "roleAlignment",
+};
 
-/**
- * Gaps, claims and readability, read off the coverage report.
- *
- * The order they are produced in does not matter — `sortSuggestions` decides
- * what the reader sees first — but the ids do: they are derived from the
- * position in this list so that the same CV and the same advert produce the
- * same recommendation under the same id twice running.
- */
+const LISTABLE = new Set<RequirementCategory>(["skill", "tool", "practice"]);
+
 export function gapSuggestions({ resume, analysis, coverage }: Input): ResumeSuggestion[] {
   const elements = resumeElements(resume);
-  const byStatus = new Map(
-    coverage.requirements.map((entry) => [entry.requirementId, entry.status]),
-  );
-  const requirements = requirementsOf(analysis);
+  const verdicts = new Map(coverage.requirements.map((entry) => [entry.requirementId, entry]));
   const out: Omit<ResumeSuggestion, "id">[] = [];
 
   const skillsTarget = elements.find((element) => element.target.sectionId === "skills");
   const summaryTarget = elements.find((element) => element.target.sectionId === "summary");
-  const bulletTarget = firstExperienceBullet(elements);
+  const firstBullet = elements.find(
+    (element) => element.target.sectionId === "experience" && element.target.itemId,
+  );
 
   /* Requirements with nothing behind them ----------------------------------- */
-  /**
-   * An advert says the same thing twice — once as "GraphQL" in a skills list
-   * and once as "Experience with GraphQL APIs" in a sentence — and both read as
-   * missing. The reader should be told once. The named technology wins, because
-   * it is the shorter and more actionable of the two.
-   */
-  const namedGaps = new Set<string>();
+  for (const requirement of analysis.requirements) {
+    const verdict = verdicts.get(requirement.id);
+    if (verdict?.match !== "missing") continue;
 
-  for (const requirement of requirements) {
-    const status = byStatus.get(requirement.id) ?? "missing";
-    if (status !== "missing") continue;
-    if (requirement.importance === "preferred" && requirement.kind !== "skill") continue;
+    const listable = LISTABLE.has(requirement.category);
+    const anchor = listable ? skillsTarget : firstBullet;
 
-    const isSkill = requirement.kind === "skill";
-    if (isSkill) {
-      namedGaps.add(requirement.text.toLowerCase());
-    } else if (detectStack(requirement.text).some((tag) => namedGaps.has(tag.toLowerCase()))) {
-      continue;
-    }
-
-    const optional = requirement.importance === "preferred";
     out.push({
-      ...(isSkill && skillsTarget
-        ? target(skillsTarget)
-        : sectionTarget(isSkill ? "skills" : "experience")),
+      ...(anchor ? target(anchor) : sectionTarget(listable ? "skills" : "experience")),
       type: "missing_requirement",
       priority: priorityOf(requirement),
-      title: optional
-        ? `${headline(requirement.text)} is a nice-to-have you do not list`
-        : `${headline(requirement.text)} is asked for and does not appear`,
-      reason: isSkill
-        ? `The advert names ${requirement.text}, and nothing in the CV mentions it. Add it only if you genuinely have this experience — a requirement you do not meet is a gap to know about, not a line to write.`
-        : `Nothing in the CV answers this line of the advert: “${requirement.text}”. If you have done this work, it is not visible yet; if you have not, this is a gap to go in knowing about.`,
-      relatedKeywords: isSkill ? [requirement.text] : undefined,
-      affects: isSkill ? ["skillsMatch", "keywordCoverage"] : ["experienceRelevance"],
+      title:
+        requirement.importance === "preferred"
+          ? `${headline(requirement.name)} is a nice-to-have you do not list`
+          : `${headline(requirement.name)} is asked for and does not appear`,
+      reason:
+        `The advert asks for this: “${headline(requirement.sourceText || requirement.name, 140)}”. ` +
+        "Nothing in the CV evidences it. Add it only if you genuinely have this experience — a requirement you do not meet is a gap to know about, not a line to write.",
+      relatedKeywords: [requirement.name],
+      requirementId: requirement.id,
+      affects: [DIMENSION_OF[requirement.category]],
       requiresConfirmation: true,
       source: "heuristic",
       status: "pending",
     });
   }
 
-  /* Skills claimed in a list but never shown in the work --------------------- */
-  for (const requirement of requirements) {
-    if (requirement.kind !== "skill") continue;
-    if ((byStatus.get(requirement.id) ?? "missing") !== "partial") continue;
+  /* Requirements answered somewhere weaker than the work itself -------------- */
+  for (const requirement of analysis.requirements) {
+    const verdict = verdicts.get(requirement.id);
+    if (verdict?.match !== "partial") continue;
 
-    const anchor = bulletTarget;
+    const seen = verdict.evidence[0];
+    const anchor =
+      elements.find((element) => element.key === seen?.key) ?? firstBullet ?? skillsTarget;
+
     out.push({
       ...(anchor ? target(anchor) : sectionTarget("experience")),
       type: "skill_alignment",
       priority: requirement.importance === "required" ? "high" : "medium",
-      title: `${headline(requirement.text)} is listed but never shown`,
-      reason: `${requirement.text} appears in your skills but in none of the roles. Where you actually used it, saying so in that role turns a claim into evidence.`,
+      title: `${headline(requirement.name)} is mentioned but not shown`,
+      reason: seen
+        ? `${requirement.name} appears in your ${seen.source} section, but not inside the work itself. Where you actually did it, saying so in that role turns a claim into evidence.`
+        : `${requirement.name} is mentioned somewhere that does not read as evidence of doing the work.`,
       currentText: anchor?.text,
-      relatedKeywords: [requirement.text],
-      affects: ["skillsMatch", "experienceRelevance"],
+      relatedKeywords: [requirement.name],
+      requirementId: requirement.id,
+      affects: [DIMENSION_OF[requirement.category]],
       requiresConfirmation: true,
       source: "heuristic",
       status: "pending",
     });
   }
 
-  /* Terms the advert insists on ---------------------------------------------- */
+  /* Terms the advert leans on ------------------------------------------------ */
   const covered = new Set(coverage.keywords);
   const missingPrimary = analysis.keywords
     .filter((keyword) => keyword.weight === "primary" && !covered.has(keyword.id))

@@ -2,6 +2,14 @@ import type { Resume } from "@/lib/resume/schema";
 import { resolveTarget, toTarget } from "@/lib/resume/target";
 
 import type { SuggestionFilter } from "./queue";
+import {
+  applyEvent,
+  completeSteps,
+  failSteps,
+  initialSteps,
+  type AnalysisEvent,
+  type AnalysisStep,
+} from "./steps";
 import type {
   JobMatch,
   JobMatchStatus,
@@ -54,6 +62,12 @@ export type TailoringState = {
    */
   scrollRequest: { key: string; nonce: number } | null;
 
+  /**
+   * Where a reading has got to, as the server reports reaching each stage.
+   * Never advanced by a timer — see `steps.ts`.
+   */
+  steps: AnalysisStep[];
+
   /** The move the last applied change or undo caused, for "↑ +3". */
   lastDelta: number | null;
   /** True while a write is in flight, so two Applies cannot race. */
@@ -67,6 +81,8 @@ export type TailoringAction =
   | { type: "filter"; filter: SuggestionFilter }
   | { type: "job-description"; text: string; applicationId: string | null }
   | { type: "analyzing" }
+  | { type: "step"; event: AnalysisEvent }
+  | { type: "cancelled" }
   | { type: "analyzed"; analysis: TailoringAnalysis; history?: ResumeChange[] }
   | { type: "failed"; error: string }
   | { type: "resume-edited"; resume: Resume }
@@ -137,6 +153,7 @@ export function initialState(input: {
     highlightedElementKey: null,
     selectedElementKey: null,
     scrollRequest: null,
+    steps: initialSteps(),
     lastDelta: null,
     busy: false,
   };
@@ -183,7 +200,20 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
       };
 
     case "analyzing":
-      return { ...state, status: "analyzing", error: "" };
+      return { ...state, status: "analyzing", error: "", steps: initialSteps() };
+
+    case "step":
+      return { ...state, steps: applyEvent(state.steps, action.event) };
+
+    case "cancelled":
+      // Nothing was written, so the previous reading — if there was one — is
+      // still the current one. Cancelling costs the attempt and nothing else.
+      return {
+        ...state,
+        status: state.analysis ? "ready" : "idle",
+        steps: initialSteps(),
+        error: "",
+      };
 
     case "analyzed":
       return {
@@ -194,6 +224,7 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
         history: action.history ?? state.history,
         status: "ready",
         error: "",
+        steps: completeSteps(state.steps),
         lastDelta: null,
         activeSuggestionId: null,
         selectedElementKey: null,
@@ -202,7 +233,9 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
 
     case "failed":
       // The document is untouched by a failed reading, and says so by staying.
-      return { ...state, status: "error", error: action.error };
+      // The checklist keeps what it had reached: how far a reading got is the
+      // one useful thing a failure still knows.
+      return { ...state, status: "error", error: action.error, steps: failSteps(state.steps) };
 
     case "resume-edited":
       return {

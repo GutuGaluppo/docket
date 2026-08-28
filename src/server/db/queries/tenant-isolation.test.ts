@@ -16,23 +16,34 @@ import { fileRejection, getRejectionCounts, listRejections, reopenApplication } 
 import { createScope } from "./scope";
 import {
   confirmImport,
+  countAnalysesFor,
   countAnalysesThisMonth,
   createImport,
   createResume,
-  deleteImport,
-  getImport,
-  getPendingImport,
   deleteChange,
+  deleteImport,
+  deleteResume,
+  duplicateResume,
   getAnalysis,
   getChange,
+  getImport,
   getLatestAnalysis,
+  getPendingImport,
   getResume,
+  getResumeById,
   listChanges,
+  listResumes,
+  markResumeUsed,
   recordChange,
+  renameResume,
   saveAnalysis,
   saveResumeContent,
+  setActiveResume,
 } from "./resumes";
-import { computeCoverage } from "@/lib/tailoring/coverage";
+import { cloneResume } from "@/lib/resume/edit";
+import { computeCoverage } from "@/lib/tailoring/matching";
+import { fingerprintJob, fingerprintResume } from "@/lib/tailoring/fingerprint";
+import { JOB_MATCH_SCORING_VERSION } from "@/lib/tailoring/score";
 import { readJobDescription } from "@/lib/tailoring/heuristics";
 import { SAMPLE_JOB, sampleResume } from "@/test/resume";
 
@@ -45,6 +56,22 @@ import { SAMPLE_JOB, sampleResume } from "@/test/resume";
  * It creates two users, cleans up after itself, and touches nothing else.
  */
 const url = process.env.TEST_DATABASE_URL;
+
+/** One stored reading, shaped exactly as the analysis pipeline produces it. */
+function analysisFixture() {
+  const jobAnalysis = readJobDescription(SAMPLE_JOB);
+  const { jobMatch, coverage, explanation } = computeCoverage(sampleResume(), jobAnalysis);
+
+  return {
+    jobAnalysis,
+    coverage,
+    jobMatch,
+    explanation,
+    suggestions: [],
+    source: "heuristic" as const,
+    analyzedAt: new Date().toISOString(),
+  };
+}
 
 describe.skipIf(!url)("tenant isolation", () => {
   const alice = { id: `test-alice-${Date.now()}`, email: `alice-${Date.now()}@docket.test` };
@@ -279,21 +306,15 @@ describe.skipIf(!url)("the CV and its readings", () => {
     });
     resumeId = created.id;
 
-    const jobAnalysis = readJobDescription(SAMPLE_JOB);
-    const { jobMatch, coverage } = computeCoverage(sampleResume(), jobAnalysis);
-
     const analysis = await saveAnalysis(holderScope, {
       resumeId,
       applicationId: null,
       jobDescription: SAMPLE_JOB,
-      analysis: {
-        jobAnalysis,
-        coverage,
-        jobMatch,
-        suggestions: [],
-        source: "heuristic",
-        analyzedAt: new Date().toISOString(),
-      },
+      resumeFingerprint: fingerprintResume(sampleResume()),
+      jobFingerprint: fingerprintJob(SAMPLE_JOB),
+      scoringVersion: JOB_MATCH_SCORING_VERSION,
+      promptVersion: "2",
+      analysis: analysisFixture(),
       model: "heuristic",
     });
     analysisId = analysis.id;
@@ -455,5 +476,182 @@ describe.skipIf(!url)("an imported CV", () => {
   it("lets its owner throw it away", async () => {
     expect(await deleteImport(ownerScope, importId)).toBe(true);
     expect(await getImport(ownerScope, importId)).toBeNull();
+  });
+});
+
+/**
+ * The library: several CVs on one account, and the rule that one account's
+ * documents are invisible and untouchable to another.
+ *
+ * The destructive paths are the ones worth the round trip. A delete that
+ * quietly leaves the readings and the imported file behind would be a product
+ * that says "permanently deleted" and means "hidden".
+ */
+describe.skipIf(!url)("a library of CVs", () => {
+  const owner = { id: `test-lib-${Date.now()}`, email: `lib-${Date.now()}@docket.test` };
+  const stranger = { id: `test-peek-${Date.now()}`, email: `peek-${Date.now()}@docket.test` };
+
+  const ownerScope = createScope(owner.id);
+  const strangerScope = createScope(stranger.id);
+
+  let generalId = "";
+  let tailoredId = "";
+
+  beforeAll(async () => {
+    await db.insert(users).values([
+      { id: owner.id, email: owner.email },
+      { id: stranger.id, email: stranger.email },
+    ]);
+
+    const general = await createResume(ownerScope, {
+      title: "General CV",
+      content: sampleResume(),
+      source: "pdf",
+      originalFileName: "ana-cv.pdf",
+    });
+    generalId = general.id;
+
+    const tailored = await createResume(ownerScope, {
+      title: "Frontend CV",
+      content: sampleResume(),
+      source: "manual",
+    });
+    tailoredId = tailored.id;
+
+    await setActiveResume(ownerScope, tailoredId);
+  });
+
+  afterAll(async () => {
+    await db.delete(users).where(eq(users.id, owner.id));
+    await db.delete(users).where(eq(users.id, stranger.id));
+  });
+
+  it("lists both, most recently touched first, and marks the one in the editor", async () => {
+    const library = await listResumes(ownerScope);
+
+    expect(library.map((entry) => entry.title)).toEqual(["Frontend CV", "General CV"]);
+    expect(library.find((entry) => entry.active)?.id).toBe(tailoredId);
+    expect(library.find((entry) => entry.id === generalId)?.source).toBe("pdf");
+    expect(library.find((entry) => entry.id === generalId)?.originalFileName).toBe("ana-cv.pdf");
+  });
+
+  it("opens the one the account points at", async () => {
+    expect((await getResume(ownerScope))?.id).toBe(tailoredId);
+
+    await setActiveResume(ownerScope, generalId);
+    expect((await getResume(ownerScope))?.id).toBe(generalId);
+
+    await setActiveResume(ownerScope, tailoredId);
+  });
+
+  it("shows a stranger none of it", async () => {
+    expect(await listResumes(strangerScope)).toEqual([]);
+    expect(await getResumeById(strangerScope, tailoredId)).toBeNull();
+    expect(await getResume(strangerScope)).toBeNull();
+  });
+
+  it("cannot be renamed, copied, pointed at or deleted by a stranger", async () => {
+    expect(await renameResume(strangerScope, tailoredId, "Mine now")).toBe(false);
+    expect(
+      await duplicateResume(strangerScope, tailoredId, {
+        title: "Stolen",
+        content: sampleResume(),
+      }),
+    ).toBeNull();
+    expect(await setActiveResume(strangerScope, tailoredId)).toBe(false);
+    expect(await deleteResume(strangerScope, tailoredId)).toBe(false);
+
+    expect((await getResumeById(ownerScope, tailoredId))?.title).toBe("Frontend CV");
+  });
+
+  it("copies into a document that shares nothing with its source", async () => {
+    const source = (await getResumeById(ownerScope, generalId))!;
+    const copy = await duplicateResume(ownerScope, generalId, {
+      title: "General CV — Jane Street",
+      content: cloneResume(source.content),
+    });
+
+    expect(copy).not.toBeNull();
+    expect(copy!.id).not.toBe(generalId);
+    expect(copy!.source).toBe("duplicate");
+
+    // Editing the copy leaves the original exactly as it was.
+    const edited = cloneResume(source.content);
+    edited.summary.text = "Rewritten for Jane Street.";
+    await saveResumeContent(ownerScope, copy!.id, edited);
+
+    expect((await getResumeById(ownerScope, generalId))?.content.summary.text).toBe(
+      source.content.summary.text,
+    );
+
+    await deleteResume(ownerScope, copy!.id);
+  });
+
+  it("records when a CV was last read against an advert", async () => {
+    await markResumeUsed(ownerScope, tailoredId);
+    expect((await getResumeById(ownerScope, tailoredId))?.lastUsedAt).not.toBeNull();
+  });
+
+  it("takes the readings, the changes and the imported file with the CV", async () => {
+    const analysis = await saveAnalysis(ownerScope, {
+      resumeId: generalId,
+      applicationId: null,
+      jobDescription: SAMPLE_JOB,
+      resumeFingerprint: fingerprintResume(sampleResume()),
+      jobFingerprint: fingerprintJob(SAMPLE_JOB),
+      scoringVersion: JOB_MATCH_SCORING_VERSION,
+      promptVersion: "2",
+      analysis: analysisFixture(),
+      model: "heuristic",
+    });
+
+    const imported = await createImport(ownerScope, {
+      fileName: "ana-cv.pdf",
+      byteSize: 2_048,
+      pageCount: 1,
+      checksum: "b".repeat(64),
+      fileData: "JVBERi0=",
+      extractedText: "Ana Ribeiro",
+      result: {
+        resume: sampleResume(),
+        warnings: [],
+        unclassifiedContent: [],
+        uncertain: [],
+        requiresReview: false,
+        source: "heuristic",
+      },
+    });
+    await confirmImport(ownerScope, imported.id, generalId);
+
+    expect(await countAnalysesFor(ownerScope, generalId)).toBe(1);
+
+    expect(await deleteResume(ownerScope, generalId)).toBe(true);
+
+    expect(await getResumeById(ownerScope, generalId)).toBeNull();
+    expect(await getAnalysis(ownerScope, analysis.id)).toBeNull();
+    expect(await getImport(ownerScope, imported.id)).toBeNull();
+  });
+
+  it("clears the editor rather than opening another CV when the active one goes", async () => {
+    const another = await createResume(ownerScope, { title: "Spare CV", content: sampleResume() });
+    await setActiveResume(ownerScope, tailoredId);
+
+    expect(await deleteResume(ownerScope, tailoredId)).toBe(true);
+
+    // Two documents and no pointer is a question, and the answer is the
+    // person's — section 18 forbids answering it for them.
+    expect(await getResume(ownerScope)).toBeNull();
+
+    await setActiveResume(ownerScope, another.id);
+    expect((await getResume(ownerScope))?.id).toBe(another.id);
+  });
+
+  it("lets the last CV be deleted too", async () => {
+    for (const entry of await listResumes(ownerScope)) {
+      await deleteResume(ownerScope, entry.id);
+    }
+
+    expect(await listResumes(ownerScope)).toEqual([]);
+    expect(await getResume(ownerScope)).toBeNull();
   });
 });

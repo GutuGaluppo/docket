@@ -6,6 +6,7 @@ import {
   compositeFontPdf,
   corruptPdf,
   encryptedPdf,
+  hybridCv,
   imageOnlyPdf,
   onePageCv,
   twoColumnCv,
@@ -78,8 +79,29 @@ describe("a CV with a text layer", () => {
       "subset.pdf",
     );
 
-    expect(outcome.extractedText).toContain("Ana Ribeiro");
-    expect(outcome.extractedText).toContain("subscription flow in React");
+    const flowing = outcome.extractedText.replace(/\s+/g, " ");
+    expect(flowing).toContain("Ana Ribeiro");
+    expect(flowing).toContain("subscription flow in React");
+  });
+});
+
+describe("a document that is partly a scan", () => {
+  it("imports the pages that had text and says which did not", async () => {
+    const outcome = await imported(hybridCv(), "hybrid.pdf");
+
+    expect(outcome.result.resume.experience[0]!.company).toContain("Loudly");
+    expect(outcome.result.warnings.map((warning) => warning.code)).toContain("scanned");
+    expect(outcome.pageCount).toBe(2);
+  });
+});
+
+describe("what is measured about an import", () => {
+  it("records counts and durations, and nothing from the document", async () => {
+    const outcome = await imported(onePageCv());
+
+    expect(outcome.timings?.totalPages).toBe(1);
+    expect(outcome.timings?.quality).toBeTruthy();
+    expect(JSON.stringify(outcome.timings ?? {})).not.toContain("Ana");
   });
 });
 
@@ -98,25 +120,25 @@ describe("a file that cannot be turned into a CV", () => {
   it("tells someone their scan needs a model, rather than importing nothing", async () => {
     const outcome = await importFromPdf(imageOnlyPdf(), "scan.pdf");
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("no-text");
+    if (!outcome.ok) expect(outcome.reason).toBe("NO_TEXT_CONTENT");
   });
 
   it("names a password as a password", async () => {
     const outcome = await importFromPdf(encryptedPdf(), "locked.pdf");
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("encrypted");
+    if (!outcome.ok) expect(outcome.reason).toBe("PASSWORD_PROTECTED");
   });
 
   it("refuses a damaged file", async () => {
     const outcome = await importFromPdf(corruptPdf(), "broken.pdf");
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("corrupt");
+    if (!outcome.ok) expect(outcome.reason).toBe("INVALID_PDF");
   });
 
   it("refuses an empty file", async () => {
     const outcome = await importFromPdf(new Uint8Array(), "nothing.pdf");
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("empty");
+    if (!outcome.ok) expect(outcome.reason).toBe("INVALID_PDF");
   });
 
   it("refuses something that is not a PDF", async () => {
@@ -125,7 +147,7 @@ describe("a file that cannot be turned into a CV", () => {
       "letter.txt",
     );
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("not-pdf");
+    if (!outcome.ok) expect(outcome.reason).toBe("INVALID_PDF");
   });
 
   it("treats a page with a line on it as having no text layer, not as a CV", async () => {
@@ -133,6 +155,6 @@ describe("a file that cannot be turned into a CV", () => {
     // it with, so this is the same answer a scan gets.
     const outcome = await importFromPdf(compositeFontPdf("Hi there"), "note.pdf");
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe("no-text");
+    if (!outcome.ok) expect(outcome.reason).toBe("NO_TEXT_CONTENT");
   });
 });

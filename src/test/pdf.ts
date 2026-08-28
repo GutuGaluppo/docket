@@ -72,6 +72,79 @@ export function twoColumnCv(): Uint8Array {
   return textPdf([...left, ...right]);
 }
 
+/** A CV that runs over two pages, the second continuing the first. */
+export function twoPageCv(): Uint8Array {
+  const page = (lines: readonly Line[]): PdfPage => ({
+    width: 595,
+    height: 842,
+    operators: lines.map((line) => text(line.x, line.y, line.text, { size: line.size ?? 10 })),
+  });
+
+  return buildPdf(
+    [
+      page([
+        { x: 56, y: 780, text: "Ana Ribeiro", size: 16 },
+        { x: 56, y: 758, text: "Frontend Engineer" },
+        { x: 56, y: 720, text: "Experience", size: 12 },
+        { x: 56, y: 700, text: "Loudly - Frontend Engineer" },
+        { x: 56, y: 686, text: "- Built the subscription flow in React" },
+        { x: 56, y: 672, text: "- Worked on frontend performance across the player" },
+        { x: 56, y: 658, text: "- Shipped the accessibility review process" },
+      ]),
+      page([
+        { x: 56, y: 780, text: "Education", size: 12 },
+        { x: 56, y: 760, text: "Universidade de Lisboa - BSc Computer Science" },
+        { x: 56, y: 740, text: "Skills", size: 12 },
+        { x: 56, y: 720, text: "Frontend: React, TypeScript, CSS" },
+        { x: 56, y: 700, text: "Tooling: Docker, Git, Vite" },
+      ]),
+    ],
+    { title: "CV" },
+  );
+}
+
+/**
+ * Text on the first page, nothing on the second.
+ *
+ * The hybrid case: a document is not all one thing, and a scan bound after a
+ * text page must not cost the text page.
+ */
+export function hybridCv(): Uint8Array {
+  return buildPdf(
+    [
+      {
+        width: 595,
+        height: 842,
+        operators: [
+          text(56, 780, "Ana Ribeiro", { size: 16 }),
+          text(56, 758, "Frontend Engineer"),
+          text(56, 720, "Experience", { size: 12 }),
+          text(56, 700, "Loudly - Frontend Engineer, 2021 - present"),
+          text(56, 686, "- Built the subscription flow in React and TypeScript"),
+          text(56, 672, "- Worked on frontend performance across the playback surface"),
+          text(56, 658, "- Ran the accessibility review that shipped with every release"),
+          text(56, 620, "Skills", { size: 12 }),
+          text(56, 600, "Frontend: React, TypeScript, CSS, Testing Library"),
+        ],
+      },
+      // A page that was scanned in: drawn, with nothing to extract.
+      { width: 595, height: 842, operators: [] },
+    ],
+    { title: "CV" },
+  );
+}
+
+/** As many pages as asked for, for the page-limit refusal. */
+export function manyPageCv(count: number): Uint8Array {
+  const pages: PdfPage[] = Array.from({ length: count }, (_, index) => ({
+    width: 595,
+    height: 842,
+    operators: [text(56, 700, `Page ${index + 1} of a very long document`)],
+  }));
+
+  return buildPdf(pages, { title: "Long" });
+}
+
 /* -------------------------------------------------------------------------- */
 
 function assemble(objects: readonly string[], trailerExtra = ""): Uint8Array {
@@ -107,30 +180,48 @@ const stream = (dict: string, body: string) =>
  * documents of this shape.
  */
 export function compositeFontPdf(value: string): Uint8Array {
-  const codes = [...value].map((_, index) => index + 1);
-  const hex = codes.map((code) => code.toString(16).padStart(4, "0")).join("");
+  // One code per distinct character, which is what a subset font actually is:
+  // the glyphs the document uses, numbered, with a map back to what they mean.
+  const alphabet = [...new Set([...value])];
+  const codeOf = new Map(alphabet.map((character, index) => [character, index + 1]));
 
-  const pairs = [...value]
-    .map(
-      (character, index) =>
-        `<${codes[index]!.toString(16).padStart(4, "0")}> <${character
-          .charCodeAt(0)
-          .toString(16)
-          .padStart(4, "0")}>`,
-    )
-    .join("\n");
+  const pairs = alphabet.map(
+    (character, index) =>
+      `<${(index + 1).toString(16).padStart(4, "0")}> <${character
+        .charCodeAt(0)
+        .toString(16)
+        .padStart(4, "0")}>`,
+  );
+
+  // A bfchar block holds at most a hundred entries. Producers chunk them and
+  // readers stop at the limit, so a fixture that ignores it is a document no
+  // reader would accept.
+  const blocks: string[] = [];
+  for (let at = 0; at < pairs.length; at += 100) {
+    const chunk = pairs.slice(at, at + 100);
+    blocks.push(`${chunk.length} beginbfchar`, chunk.join("\n"), "endbfchar");
+  }
 
   const cmap = [
     "/CIDInit /ProcSet findresource begin",
     "12 dict begin begincmap",
     "1 begincodespacerange <0000> <FFFF> endcodespacerange",
-    `${value.length} beginbfchar`,
-    pairs,
-    "endbfchar",
+    ...blocks,
     "endcmap end end",
   ].join("\n");
 
-  const content = `BT /F1 12 Tf 1 0 0 1 60 700 Tm <${hex}> Tj ET`;
+  const hex = (line: string) =>
+    [...line]
+      .map((character) => (codeOf.get(character) ?? 1).toString(16).padStart(4, "0"))
+      .join("");
+
+  // Wrapped into lines, the way a page of a CV is set.
+  const lines = value.match(/.{1,72}(\s|$)/g) ?? [value];
+  const content = lines
+    .map(
+      (line, index) => `BT /F1 11 Tf 1 0 0 1 56 ${760 - index * 18} Tm <${hex(line.trim())}> Tj ET`,
+    )
+    .join("\n");
 
   return assemble([
     "<< /Type /Catalog /Pages 2 0 R >>",
@@ -141,7 +232,9 @@ export function compositeFontPdf(value: string): Uint8Array {
       "/DescendantFonts [7 0 R] /ToUnicode 5 0 R >>",
     stream("", cmap),
     stream("", content),
-    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+Subset >>",
+    "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /AAAAAA+Subset " +
+      `/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> ` +
+      `/DW 600 /W [1 ${alphabet.length} 600] >>`,
   ]);
 }
 
@@ -190,4 +283,38 @@ export function encryptedPdf(): Uint8Array {
 /** A PDF header on top of something that is not a PDF. */
 export function corruptPdf(): Uint8Array {
   return new Uint8Array(Buffer.from("%PDF-1.7\n" + "  broken ".repeat(40), "latin1"));
+}
+
+/**
+ * A CV whose contact line says "GitHub" and "LinkedIn" as words, with the real
+ * addresses behind link annotations — which is how every CV exported from a
+ * word processor carries them, and why they have to be read from the file
+ * rather than guessed from the text.
+ */
+export function linkedCv(): Uint8Array {
+  const lines = [
+    "BT /F1 16 Tf 1 0 0 1 56 780 Tm (Ana Ribeiro) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 758 Tm (Frontend Engineer) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 742 Tm (GitHub | LinkedIn | ana@example.com) Tj ET",
+    "BT /F1 12 Tf 1 0 0 1 56 700 Tm (Experience) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 680 Tm (Loudly - Frontend Engineer, 2021 - present) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 664 Tm (- Built the subscription flow in React and TypeScript) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 648 Tm (- Worked on frontend performance across the player) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 632 Tm (- Ran the accessibility review before every release) Tj ET",
+    "BT /F1 12 Tf 1 0 0 1 56 600 Tm (Skills) Tj ET",
+    "BT /F1 10 Tf 1 0 0 1 56 580 Tm (Frontend: React, TypeScript, CSS, Testing Library) Tj ET",
+  ].join("\n");
+
+  return assemble([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] " +
+      "/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R /Annots [6 0 R 7 0 R] >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    stream("", lines),
+    "<< /Type /Annot /Subtype /Link /Rect [56 736 100 752] /Border [0 0 0] " +
+      "/A << /Type /Action /S /URI /URI (https://github.com/anaribeiro) >> >>",
+    "<< /Type /Annot /Subtype /Link /Rect [110 736 170 752] /Border [0 0 0] " +
+      "/A << /Type /Action /S /URI /URI (https://linkedin.com/in/anaribeiro) >> >>",
+  ]);
 }

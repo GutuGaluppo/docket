@@ -26,6 +26,26 @@ export const replaceResumeSchema = z.object({
   text: z.string().min(1).max(60_000),
 });
 
+/** Naming one document. All any library action needs beyond a new title. */
+export const resumeIdSchema = z.object({ id: z.string().min(1).max(64) });
+
+export const renameResumeSchema = z.object({
+  id: z.string().min(1).max(64),
+  title: z.string().trim().min(1, "Give this CV a name.").max(120),
+});
+
+/**
+ * Copying one. The title is optional because the interface offers a default —
+ * naming a copy before making it is a decision nobody has enough information
+ * for yet.
+ */
+export const duplicateResumeSchema = z.object({
+  id: z.string().min(1).max(64),
+  title: z.string().trim().max(120).optional(),
+  /** Whether the copy becomes the document the editor opens on. */
+  activate: z.boolean().optional().default(true),
+});
+
 export const saveResumeSchema = z.object({
   id: z.string().min(1).max(64),
   resume: resumeSchema,

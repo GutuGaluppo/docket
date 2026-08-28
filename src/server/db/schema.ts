@@ -36,6 +36,14 @@ export const users = pgTable("users", {
    * default: nobody is opted into email they did not ask for.
    */
   followUpDays: integer("follow_up_days"),
+  /**
+   * Which CV the editor opens on. A pointer rather than a flag on the rows
+   * themselves: two rows can both be marked active and only one of them can be
+   * true, whereas a column here cannot disagree with itself. It goes null when
+   * the CV it names is deleted, which is exactly the behaviour the editor wants
+   * — an empty state rather than a silent switch to somebody else's document.
+   */
+  activeResumeId: text("active_resume_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -326,6 +334,12 @@ export const resumes = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("My CV"),
+    /** How this document got here: an imported PDF, typed in, or a copy. */
+    source: text("source").notNull().default("manual"),
+    /** The name of the file it was read from, when it was read from one. */
+    originalFileName: text("original_file_name"),
+    /** When it was last read against an advert. Null until it has been. */
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     content: jsonb("content").notNull(),
     original: jsonb("original").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -362,6 +376,27 @@ export const resumeAnalyses = pgTable(
       onDelete: "set null",
     }),
     jobDescription: text("job_description").notNull(),
+    /**
+     * Fingerprints of the two documents as they were when this ran.
+     *
+     * A figure belongs to one CV read against one advert, and both can change
+     * underneath it. Comparing hashes is what lets the interface say "this
+     * describes what you are looking at" or "this is stale" without guessing
+     * from timestamps — and what stops a reading of one CV from ever being
+     * shown beside another.
+     */
+    resumeFingerprint: text("resume_fingerprint").notNull().default(""),
+    jobFingerprint: text("job_fingerprint").notNull().default(""),
+    /**
+     * Which algorithm and which instructions produced it.
+     *
+     * A figure computed by an older scorer is not a stale reading of the same
+     * documents — it is an answer to a different question, and comparing the
+     * two would be comparing things that were never comparable. Both are part
+     * of whether a stored reading is current.
+     */
+    scoringVersion: text("scoring_version").notNull().default("1"),
+    promptVersion: text("prompt_version").notNull().default("1"),
     result: jsonb("result").notNull(),
     /** Which reading produced it: the model's name, or "heuristic". */
     model: text("model").notNull().default("heuristic"),
@@ -401,7 +436,13 @@ export const resumeImports = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     /** Null until the review is confirmed. */
-    resumeId: text("resume_id").references(() => resumes.id, { onDelete: "set null" }),
+    /**
+     * Null until the review is confirmed, and cascading afterwards: the file is
+     * the provenance of one document, so deleting that document has to take the
+     * file with it. Section 47 — what the interface calls permanent deletion
+     * has to be permanent deletion.
+     */
+    resumeId: text("resume_id").references(() => resumes.id, { onDelete: "cascade" }),
     fileName: text("file_name").notNull(),
     byteSize: integer("byte_size").notNull(),
     pageCount: integer("page_count").notNull().default(0),

@@ -4,7 +4,7 @@ import { resumeElements } from "@/lib/resume/target";
 import { SAMPLE_JOB, sampleResume } from "@/test/resume";
 
 import { applySuggestion, revertChange } from "./apply";
-import { computeCoverage } from "./coverage";
+import { computeCoverage } from "./matching";
 import { gapSuggestions } from "./gaps";
 import { readJobDescription } from "./heuristics";
 import { initialState, tailoringReducer, type TailoringState } from "./state";
@@ -22,12 +22,13 @@ import type { TailoringAnalysis } from "./types";
 function build(): { state: TailoringState; analysis: TailoringAnalysis } {
   const resume = sampleResume();
   const jobAnalysis = readJobDescription(SAMPLE_JOB);
-  const { jobMatch, coverage } = computeCoverage(resume, jobAnalysis);
+  const { jobMatch, coverage, explanation } = computeCoverage(resume, jobAnalysis);
 
   const analysis: TailoringAnalysis = {
     jobAnalysis,
     coverage,
     jobMatch,
+    explanation,
     suggestions: gapSuggestions({ resume, analysis: jobAnalysis, coverage }),
     source: "heuristic",
     analyzedAt: new Date("2026-08-26T10:00:00.000Z").toISOString(),
@@ -216,6 +217,61 @@ describe("applying, dismissing and undoing", () => {
   });
 });
 
+describe("while a reading runs", () => {
+  it("starts the checklist with nothing done", () => {
+    const { state } = build();
+    const analyzing = tailoringReducer(state, { type: "analyzing" });
+
+    expect(analyzing.status).toBe("analyzing");
+    expect(analyzing.steps.every((step) => step.status === "pending")).toBe(true);
+  });
+
+  it("advances only on what the server reports", () => {
+    const { state } = build();
+    const analyzing = tailoringReducer(state, { type: "analyzing" });
+    const moved = tailoringReducer(analyzing, {
+      type: "step",
+      event: { step: "compare", status: "active" },
+    });
+
+    expect(moved.steps.map((step) => step.status)).toEqual([
+      "completed",
+      "completed",
+      "active",
+      "pending",
+      "pending",
+    ]);
+  });
+
+  it("finishes the checklist when the result lands", () => {
+    const { state, analysis } = build();
+    const analyzing = tailoringReducer(state, { type: "analyzing" });
+    const done = tailoringReducer(analyzing, { type: "analyzed", analysis });
+
+    expect(done.steps.every((step) => step.status === "completed")).toBe(true);
+  });
+
+  it("keeps the previous result when a reading is cancelled", () => {
+    const { state } = build();
+    const analyzing = tailoringReducer(state, { type: "analyzing" });
+    const cancelled = tailoringReducer(analyzing, { type: "cancelled" });
+
+    expect(cancelled.status).toBe("ready");
+    expect(cancelled.jobMatch).toEqual(state.jobMatch);
+    expect(cancelled.suggestions).toEqual(state.suggestions);
+    expect(cancelled.error).toBe("");
+  });
+
+  it("goes back to idle when a first reading is cancelled", () => {
+    const idle = initialState({ resume: sampleResume(), jobDescription: SAMPLE_JOB });
+    const cancelled = tailoringReducer(tailoringReducer(idle, { type: "analyzing" }), {
+      type: "cancelled",
+    });
+
+    expect(cancelled.status).toBe("idle");
+  });
+});
+
 describe("a failed reading", () => {
   it("keeps every change the person made", () => {
     const { state } = build();
@@ -225,5 +281,34 @@ describe("a failed reading", () => {
     expect(failed.status).toBe("error");
     expect(failed.resume).toEqual(state.resume);
     expect(failed.suggestions).toEqual(state.suggestions);
+  });
+
+  it("keeps the figure it already had", () => {
+    // Section 38: a failed retry does not destroy a result that was valid.
+    const { state } = build();
+    const failed = tailoringReducer(tailoringReducer(state, { type: "analyzing" }), {
+      type: "failed",
+      error: "The reading failed.",
+    });
+
+    expect(failed.jobMatch).toEqual(state.jobMatch);
+    expect(failed.analysis).toEqual(state.analysis);
+  });
+
+  it("marks the checklist where it stopped rather than resetting it", () => {
+    const { state } = build();
+    const running = tailoringReducer(tailoringReducer(state, { type: "analyzing" }), {
+      type: "step",
+      event: { step: "compare", status: "active" },
+    });
+    const failed = tailoringReducer(running, { type: "failed", error: "It stopped." });
+
+    expect(failed.steps.map((step) => step.status)).toEqual([
+      "completed",
+      "completed",
+      "error",
+      "pending",
+      "pending",
+    ]);
   });
 });
