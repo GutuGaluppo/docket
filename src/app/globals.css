@@ -66,6 +66,21 @@
   --steel-100: #ebe8de;
   --steel-300: #c6c2b6;
   --steel-500: #9a9689;
+
+  /* Status colors for entry states */
+  --status-pending: #726f66;
+  --status-interview: #6c3fa8;
+  --status-offer: #16a34a;
+  --status-rejected: #a93726;
+
+  /* Elevation system (subtle shadows for depth without borders) */
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.04);
+  --elevation-2: 0 2px 8px rgb(0 0 0 / 0.08);
+  --elevation-3: 0 8px 24px rgb(0 0 0 / 0.12);
+  --elevation-4: 0 16px 48px rgb(0 0 0 / 0.16);
+
+  /* Focus ring for accessibility */
+  --focus-ring: 0 0 0 3px var(--accent-wash);
 }
 
 /* ---------------------------------------------------------------------------
@@ -248,6 +263,72 @@
   /* Figures line up in the register without hand-tuned widths. */
   .font-mono {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Animations for modern interactions */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -48%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse-highlight {
+    0%, 100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: var(--accent-wash);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  .animate-pulse-highlight {
+    animation: pulse-highlight 0.6s ease-out;
+  }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

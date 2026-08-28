@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/auth";
 import { AppShell } from "@/components/shell/AppShell";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { CommandPalette } from "@/components/command/CommandPalette";
 import { getSession } from "@/server/auth/session";
 
 /**
@@ -19,29 +20,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user?.id) redirect("/sign-in");
 
   return (
-    <AppShell
-      email={session.user.email ?? ""}
-      signOut={
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/sign-in" });
-          }}
-        >
-          <button type="submit" className="cursor-pointer font-mono tracking-[0.1em] uppercase">
-            Sign out
-          </button>
-        </form>
-      }
-      footer={
-        <LegalFooter
-          compact
-          contactName={session.user.name ?? ""}
-          contactEmail={session.user.email ?? ""}
-        />
-      }
-    >
-      {children}
-    </AppShell>
+    <>
+      <CommandPalette />
+      <AppShell
+        email={session.user.email ?? ""}
+        signOut={
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/sign-in" });
+            }}
+          >
+            <button type="submit" className="cursor-pointer font-mono tracking-[0.1em] uppercase">
+              Sign out
+            </button>
+          </form>
+        }
+        footer={
+          <LegalFooter
+            compact
+            contactName={session.user.name ?? ""}
+            contactEmail={session.user.email ?? ""}
+          />
+        }
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }
