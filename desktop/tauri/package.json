@@ -1,0 +1,14 @@
+{
+  "name": "docket-tauri-poc",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "pnpm dev",
+    "test:stream": "node tests/stream_integration_test.js"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.7.0"
+  }
+}
