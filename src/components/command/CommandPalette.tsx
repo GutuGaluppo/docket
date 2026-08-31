@@ -1,351 +1,310 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SectionIcon, type IconName } from "@/components/shell/SectionIcon";
 
-interface Command {
+import { SectionIcon, type IconName } from "@/components/shell/SectionIcon";
+import { COMMAND_PALETTE_EVENT } from "./palette-channel";
+
+/**
+ * Everything the product can do, one keystroke away.
+ *
+ * It is a `<dialog>` rather than a pair of fixed-position divs, and that is the
+ * fix for the bug that made it look broken: the old panel painted itself onto
+ * a `bg-raised` class the theme never defined, so the words floated over
+ * whatever page happened to be underneath. The top layer and `::backdrop` are
+ * the browser's own answer to both halves of that — an opaque panel above
+ * everything, and a scrim that cannot be escaped by a stacking context.
+ */
+type Command = {
   id: string;
   label: string;
   icon?: IconName;
   shortcut?: string;
-  action: () => void;
   group: string;
-  keywords?: string[];
-}
-
-interface CommandGroup {
-  heading: string;
-  commands: Command[];
-}
+  keywords?: readonly string[];
+  action: () => void;
+};
 
 export function CommandPalette() {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [showHint, setShowHint] = useState(true);
+  const [selected, setSelected] = useState(0);
   const router = useRouter();
 
-  // Hide hint after first use
-  useEffect(() => {
-    if (open) {
-      setShowHint(false);
-      localStorage.setItem("docket:commandPaletteUsed", "true");
-    }
-  }, [open]);
-
-  // Check if user has used it before
-  useEffect(() => {
-    const used = localStorage.getItem("docket:commandPaletteUsed");
-    setShowHint(!used);
-  }, []);
-
-  // Define all available commands
-  const allCommands: Command[] = useMemo(
+  const commands: readonly Command[] = useMemo(
     () => [
-      // Actions
       {
         id: "stamp-new",
-        label: "Stamp new entry",
-        icon: "docket",
-        shortcut: "C",
-        action: () => router.push("/docket"),
+        label: "Stamp a new entry",
+        icon: "plus",
         group: "Actions",
         keywords: ["new", "create", "add", "application"],
+        action: () => router.push("/docket/new"),
       },
       {
         id: "import",
         label: "Import applications",
-        icon: "docket",
-        action: () => router.push("/docket/import"),
+        icon: "import",
         group: "Actions",
         keywords: ["upload", "csv", "json"],
-      },
-      {
-        id: "export",
-        label: "Export docket",
-        action: () => router.push("/docket/export"),
-        group: "Actions",
-        keywords: ["download", "pdf", "excel", "csv"],
-      },
-
-      // Navigation
-      {
-        id: "nav-board",
-        label: "Go to Board",
-        icon: "board",
-        action: () => router.push("/board"),
-        group: "Navigation",
-        keywords: ["kanban", "columns"],
+        action: () => router.push("/docket/import"),
       },
       {
         id: "nav-docket",
         label: "Go to Docket",
         icon: "docket",
-        action: () => router.push("/docket"),
         group: "Navigation",
-        keywords: ["table", "list", "register"],
+        keywords: ["home", "overview", "start"],
+        action: () => router.push("/docket"),
+      },
+      {
+        id: "nav-applications",
+        label: "Go to Applications",
+        icon: "applications",
+        group: "Navigation",
+        keywords: ["table", "list", "register", "companies"],
+        action: () => router.push("/applications"),
+      },
+      {
+        id: "nav-board",
+        label: "Go to Board",
+        icon: "board",
+        group: "Navigation",
+        keywords: ["kanban", "columns", "stages"],
+        action: () => router.push("/board"),
       },
       {
         id: "nav-calendar",
         label: "Go to Calendar",
         icon: "calendar",
-        action: () => router.push("/calendar"),
         group: "Navigation",
         keywords: ["interviews", "events"],
+        action: () => router.push("/calendar"),
       },
       {
         id: "nav-cv",
-        label: "Go to CV Tailoring",
+        label: "Go to CV",
         icon: "cv",
-        action: () => router.push("/cv"),
         group: "Navigation",
         keywords: ["resume", "match", "tailor"],
+        action: () => router.push("/cv"),
       },
       {
         id: "nav-archive",
         label: "Go to Archive",
         icon: "archive",
-        action: () => router.push("/archive"),
         group: "Navigation",
         keywords: ["rejected", "filed"],
+        action: () => router.push("/archive"),
       },
       {
         id: "nav-analytics",
         label: "Go to Analytics",
         icon: "analytics",
-        action: () => router.push("/analytics"),
         group: "Navigation",
-        keywords: ["stats", "metrics", "insights"],
+        keywords: ["stats", "metrics", "map", "insights"],
+        action: () => router.push("/analytics"),
       },
-
-      // Settings
       {
         id: "toggle-theme",
-        label: "Toggle theme",
+        label: "Toggle light and dark",
+        group: "Settings",
+        keywords: ["dark", "light", "mode", "theme"],
         action: () => {
           const root = document.documentElement;
-          const current = root.getAttribute("data-theme");
-          root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+          const dark =
+            root.dataset.theme === "dark" ||
+            (!root.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          root.dataset.theme = dark ? "light" : "dark";
+          localStorage.setItem("docket-theme", dark ? "light" : "dark");
         },
-        group: "Settings",
-        keywords: ["dark", "light", "mode"],
-      },
-      {
-        id: "shortcuts",
-        label: "Keyboard shortcuts",
-        shortcut: "?",
-        action: () => {
-          // TODO: Open shortcuts modal
-          alert("Shortcuts help coming soon!");
-        },
-        group: "Settings",
       },
       {
         id: "settings",
         label: "Settings",
         icon: "settings",
-        action: () => router.push("/settings"),
         group: "Settings",
+        action: () => router.push("/settings"),
       },
     ],
-    [router]
+    [router],
   );
 
-  // Filter commands based on search
-  const filteredCommands = useMemo(() => {
-    if (!search) return allCommands;
-
-    const query = search.toLowerCase();
-    return allCommands.filter(
-      (cmd) =>
-        cmd.label.toLowerCase().includes(query) ||
-        cmd.keywords?.some((kw) => kw.toLowerCase().includes(query))
+  const matches = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return commands;
+    return commands.filter(
+      (command) =>
+        command.label.toLowerCase().includes(needle) ||
+        command.keywords?.some((keyword) => keyword.includes(needle)),
     );
-  }, [search, allCommands]);
+  }, [commands, search]);
 
-  // Group filtered commands
-  const groupedCommands: CommandGroup[] = useMemo(() => {
-    const groups = new Map<string, Command[]>();
+  /** Kept in render order so arrow keys and the printed order agree. */
+  const groups = useMemo(() => {
+    const byHeading = new Map<string, Command[]>();
+    for (const command of matches) {
+      byHeading.set(command.group, [...(byHeading.get(command.group) ?? []), command]);
+    }
+    return [...byHeading.entries()];
+  }, [matches]);
 
-    filteredCommands.forEach((cmd) => {
-      const existing = groups.get(cmd.group) || [];
-      groups.set(cmd.group, [...existing, cmd]);
-    });
+  const close = useCallback(() => {
+    dialogRef.current?.close();
+  }, []);
 
-    return Array.from(groups.entries()).map(([heading, commands]) => ({
-      heading,
-      commands,
-    }));
-  }, [filteredCommands]);
+  const show = useCallback(() => {
+    setSearch("");
+    setSelected(0);
+    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+  }, []);
 
-  // Flatten for keyboard navigation
-  const flatCommands = useMemo(
-    () => filteredCommands,
-    [filteredCommands]
-  );
-
-  // Execute selected command
-  const executeCommand = useCallback(
+  const run = useCallback(
     (command: Command) => {
+      close();
       command.action();
-      setOpen(false);
-      setSearch("");
-      setSelectedIndex(0);
     },
-    []
+    [close],
   );
 
-  // Keyboard shortcuts
+  // ⌘K from anywhere, and the same request arriving from the bar above the page.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K to open
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-        return;
-      }
-
-      // Escape to close
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-        setSearch("");
-        setSelectedIndex(0);
-        return;
-      }
-
-      // Don't handle other shortcuts when palette is closed
-      if (!open) return;
-
-      // Arrow navigation
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < flatCommands.length - 1 ? prev + 1 : prev
-        );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-      }
-
-      // Enter to execute
-      else if (e.key === "Enter" && flatCommands[selectedIndex]) {
-        e.preventDefault();
-        executeCommand(flatCommands[selectedIndex]);
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (dialogRef.current?.open) close();
+        else show();
       }
     };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener(COMMAND_PALETTE_EVENT, show);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(COMMAND_PALETTE_EVENT, show);
+    };
+  }, [close, show]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, flatCommands, selectedIndex, executeCommand]);
-
-  // Reset selection when search changes
+  // Escape is handled by the dialog itself; this keeps React's idea of open in
+  // step with the browser's, whichever of the two closed it.
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [search]);
+    const node = dialogRef.current;
+    if (!node) return;
+    const onClose = () => setOpen(false);
+    node.addEventListener("close", onClose);
+    return () => node.removeEventListener("close", onClose);
+  }, []);
 
-  if (!open) {
-    return (
-      <>
-        {/* Floating hint badge - shows until first use */}
-        {showHint && (
-          <button
-            onClick={() => setOpen(true)}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-stamp px-4 py-3 text-sm font-medium text-on-stamp shadow-elevation-3 transition-all hover:shadow-elevation-4 hover:scale-105 animate-pulse-highlight"
-            style={{ animationIterationCount: 3 }}
-          >
-            <span>Press</span>
-            <kbd className="rounded bg-on-stamp/20 px-2 py-1 font-mono text-xs">
-              ⌘K
-            </kbd>
-            <span>to search</span>
-          </button>
-        )}
-      </>
-    );
+  function onListKey(event: React.KeyboardEvent) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSelected((index) => (index + 1) % Math.max(matches.length, 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelected((index) => (index - 1 + matches.length) % Math.max(matches.length, 1));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const command = matches[selected];
+      if (command) run(command);
+    }
   }
 
-  let commandIndex = 0;
+  let cursor = -1;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm animate-fade-in"
-        onClick={() => setOpen(false)}
-      />
-
-      {/* Palette */}
-      <div className="fixed left-1/2 top-[20%] z-50 w-full max-w-2xl -translate-x-1/2 animate-slide-up">
-        <div className="mx-4 overflow-hidden rounded-lg border border-rule bg-raised shadow-elevation-4">
-          {/* Search input */}
-          <div className="border-b border-rule">
+    <dialog
+      ref={dialogRef}
+      className="modal w-[min(94vw,640px)]! max-w-[min(94vw,640px)]! mt-[12vh] mb-auto"
+      aria-label="Commands"
+      onToggle={() => setOpen(dialogRef.current?.open ?? false)}
+      onKeyDown={onListKey}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      {/* Mounted only while the dialog is open, so the input is focused fresh
+          every time and the list never holds a stale selection. */}
+      {open && (
+        <>
+          <div className="flex items-center gap-3 border-b border-rule px-5 py-4">
+            <SearchGlyph />
             <input
-              type="text"
-              className="w-full bg-transparent px-4 py-4 text-base outline-none placeholder:text-faint"
-              placeholder="Search commands..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
               autoFocus
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSelected(0);
+              }}
+              placeholder="Search commands, sections, actions…"
+              aria-label="Search commands"
+              className="w-full bg-transparent text-base outline-none placeholder:text-faint"
             />
+            <span className="kbd">esc</span>
           </div>
 
-          {/* Command groups */}
-          <div className="max-h-[400px] overflow-y-auto">
-            {groupedCommands.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted">
-                No commands found
-              </div>
+          <div className="max-h-[52vh] overflow-y-auto py-2">
+            {matches.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-muted">
+                Nothing matches “{search}”.
+              </p>
             ) : (
-              groupedCommands.map((group) => (
-                <div key={group.heading}>
-                  <div className="px-4 pt-3 pb-2">
-                    <div className="text-xs uppercase tracking-wider text-faint">
-                      {group.heading}
-                    </div>
-                  </div>
-                  <div className="pb-2">
-                    {group.commands.map((command) => {
-                      const isSelected = commandIndex === selectedIndex;
-                      const currentIndex = commandIndex++;
-
-                      return (
-                        <button
-                          key={command.id}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                            isSelected
-                              ? "bg-stamp-wash text-ink"
-                              : "text-muted hover:bg-card hover:text-ink"
-                          }`}
-                          onClick={() => executeCommand(command)}
-                          onMouseEnter={() => setSelectedIndex(currentIndex)}
-                        >
-                          {command.icon && (
-                            <SectionIcon name={command.icon} className="h-4 w-4" />
-                          )}
-                          <span className="flex-1 text-sm">{command.label}</span>
-                          {command.shortcut && (
-                            <kbd className="rounded border border-rule bg-card px-2 py-0.5 font-mono text-xs text-faint">
-                              {command.shortcut}
-                            </kbd>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+              groups.map(([heading, items]) => (
+                <div key={heading}>
+                  <p className="eyebrow px-5 pt-3 pb-1.5 text-faint">{heading}</p>
+                  {items.map((command) => {
+                    cursor += 1;
+                    const index = cursor;
+                    const active = index === selected;
+                    return (
+                      <button
+                        key={command.id}
+                        type="button"
+                        onClick={() => run(command)}
+                        onMouseEnter={() => setSelected(index)}
+                        className={`flex w-full cursor-pointer items-center gap-3 px-5 py-2.5 text-left text-sm transition-colors ${
+                          active ? "bg-stamp-wash text-ink" : "text-muted hover:text-ink"
+                        }`}
+                      >
+                        {command.icon ? (
+                          <SectionIcon name={command.icon} />
+                        ) : (
+                          <span className="h-4 w-4 shrink-0" />
+                        )}
+                        <span className="flex-1">{command.label}</span>
+                        {command.shortcut && <span className="kbd">{command.shortcut}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               ))
             )}
           </div>
 
-          {/* Footer hint */}
-          <div className="border-t border-rule bg-card px-4 py-2 text-xs text-faint">
-            <span className="mr-4">↑↓ Navigate</span>
-            <span className="mr-4">↵ Select</span>
-            <span>Esc Close</span>
+          <div className="modal-foot justify-start! font-mono text-[11px] text-faint">
+            <span>↑↓ move</span>
+            <span>↵ run</span>
+            <span>esc close</span>
           </div>
-        </div>
-      </div>
-    </>
+        </>
+      )}
+    </dialog>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      className="h-4 w-4 shrink-0 text-faint"
+    >
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5 14 14" />
+    </svg>
   );
 }

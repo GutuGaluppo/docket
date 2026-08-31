@@ -6,6 +6,8 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { openCommandPalette } from "@/components/command/palette-channel";
+import { PageTitleProvider, usePageTitle } from "./PageTitle";
 import { SectionIcon, type IconName } from "./SectionIcon";
 
 /**
@@ -17,18 +19,26 @@ import { SectionIcon, type IconName } from "./SectionIcon";
  * sight, and the section you are in stays legible at a glance instead of being
  * the one tab that looks slightly different.
  *
- * It is a client component because three things depend on the browser: which
- * item is current, whether the rail is collapsed, and whether the drawer is open
- * on a phone. The page inside it is passed as `children` and stays exactly as
- * server-rendered — nothing here makes the content client-side.
+ * It is a client component because four things depend on the browser: which
+ * item is current, whether the rail is collapsed, whether the drawer is open on
+ * a phone, and how far down the page has been scrolled. The page inside it is
+ * passed as `children` and stays exactly as server-rendered — nothing here
+ * makes the content client-side.
  */
 type Item = { href: Route; label: string; icon: IconName };
 
+/**
+ * Two sections that used to be one. The docket is the desk — what to do next,
+ * and what has happened so far. The list of companies applied to is a register,
+ * long and searchable, and it was never going to sit comfortably under the same
+ * heading as a form for adding to it.
+ */
 const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
   {
     label: "Register",
     items: [
       { href: "/docket", label: "Docket", icon: "docket" },
+      { href: "/applications", label: "Applications", icon: "applications" },
       { href: "/board", label: "Board", icon: "board" },
       { href: "/calendar", label: "Calendar", icon: "calendar" },
       { href: "/archive", label: "Archive", icon: "archive" },
@@ -87,6 +97,17 @@ function NavItem({ item, current }: { item: Item; current: boolean }) {
 
 const RAIL_KEY = "docket:rail";
 
+/**
+ * How far the page has to travel before the heading is considered gone.
+ *
+ * Measured against the heading's own height rather than a fixed number of
+ * pixels would be more exact, but it would also mean reading layout on every
+ * scroll event. A threshold just past the top of a heading is close enough that
+ * the swap always lands while the title is on its way out, and it costs
+ * nothing.
+ */
+const SCROLL_THRESHOLD = 96;
+
 export function AppShell({
   email,
   signOut,
@@ -102,6 +123,7 @@ export function AppShell({
   const pathname = usePathname();
   const [rail, setRail] = useState(false);
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   // Read on the client only: the server has no way to know, and rendering the
   // wide sidebar first means the collapsed state never flashes as a layout jump
@@ -112,6 +134,24 @@ export function AppShell({
 
   // A drawer that survives the navigation it started is a drawer in the way.
   useEffect(() => setOpen(false), [pathname]);
+
+  /**
+   * The scroll state the heading transition hangs off.
+   *
+   * A threshold with hysteresis, not a raw offset: a page parked within a pixel
+   * of the boundary would otherwise flicker between the two titles on every
+   * wheel tick. The listener is passive and writes state only when the answer
+   * actually changes, so scrolling stays off React's critical path.
+   */
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled((was) => (was ? y > SCROLL_THRESHOLD - 32 : y > SCROLL_THRESHOLD));
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -132,91 +172,146 @@ export function AppShell({
   const current = ITEMS.find((item) => isCurrent(pathname, item.href));
 
   return (
-    <div className="shell" data-rail={rail ? "true" : undefined}>
-      <aside className="sidebar" data-open={open ? "true" : undefined} aria-label="Sections">
-        <div className="sidebar-head">
-          <Link href="/docket" className="wordmark">
-            <span aria-hidden="true" className="wordmark-mark">
-              №
-            </span>
-            <span className="nav-label">Docket</span>
-          </Link>
-          <button
-            type="button"
-            onClick={toggleRail}
-            className="icon-button rail-only-hide"
-            aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
-            suppressHydrationWarning
-          >
-            <SectionIcon name="rail" />
-          </button>
-        </div>
-
-        <Link href="/docket" className="new-entry">
-          <SectionIcon name="plus" />
-          <span className="nav-label">New entry</span>
-        </Link>
-
-        {/* Command Palette Hint */}
-        <div className="px-3 py-2 mb-2 text-xs text-faint font-mono">
-          <span className="nav-label">
-            Press{" "}
-            <kbd className="px-1.5 py-0.5 bg-card border border-rule rounded text-[10px]">
-              ⌘K
-            </kbd>{" "}
-            for commands
-          </span>
-        </div>
-
-        <nav className="sidebar-nav">
-          {GROUPS.map((group) => (
-            <div key={group.label} className="nav-group">
-              <p className="nav-group-label">{group.label}</p>
-              {group.items.map((item) => (
-                <NavItem key={item.href} item={item} current={isCurrent(pathname, item.href)} />
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className="sidebar-foot">
-          <NavItem item={SETTINGS} current={isCurrent(pathname, SETTINGS.href)} />
-          <p className="sidebar-identity nav-label" title={email}>
-            {email}
-          </p>
-          <div className="sidebar-controls nav-label">
-            <ThemeToggle />
-            {signOut}
+    <PageTitleProvider fallback={current?.label ?? "Docket"}>
+      <div
+        className="shell"
+        data-rail={rail ? "true" : undefined}
+        data-scrolled={scrolled || undefined}
+      >
+        <aside className="sidebar" data-open={open ? "true" : undefined} aria-label="Sections">
+          <div className="sidebar-head">
+            <Link href="/docket" className="wordmark">
+              <span aria-hidden="true" className="wordmark-mark">
+                №
+              </span>
+              <span className="nav-label">Docket</span>
+            </Link>
+            <button
+              type="button"
+              onClick={toggleRail}
+              className="icon-button rail-only-hide"
+              aria-label={rail ? "Expand the sidebar" : "Collapse the sidebar"}
+              suppressHydrationWarning
+            >
+              <SectionIcon name="rail" />
+            </button>
           </div>
-        </div>
-      </aside>
 
-      {open && (
-        <button
-          type="button"
-          className="scrim"
-          aria-label="Close the menu"
-          onClick={() => setOpen(false)}
-        />
-      )}
+          <Link href="/docket/new" className="new-entry">
+            <SectionIcon name="plus" />
+            <span className="nav-label">New entry</span>
+          </Link>
 
-      <div className="main">
-        <header className="topbar">
+          <nav className="sidebar-nav">
+            {GROUPS.map((group) => (
+              <div key={group.label} className="nav-group">
+                <p className="nav-group-label">{group.label}</p>
+                {group.items.map((item) => (
+                  <NavItem key={item.href} item={item} current={isCurrent(pathname, item.href)} />
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="sidebar-foot">
+            <NavItem item={SETTINGS} current={isCurrent(pathname, SETTINGS.href)} />
+            <p className="sidebar-identity nav-label" title={email}>
+              {email}
+            </p>
+            <div className="sidebar-controls nav-label">{signOut}</div>
+          </div>
+        </aside>
+
+        {open && (
           <button
             type="button"
-            className="icon-button drawer-only"
-            aria-label="Open the menu"
-            onClick={() => setOpen(true)}
-            suppressHydrationWarning
-          >
-            <SectionIcon name="menu" />
-          </button>
-          <span className="topbar-title">{current?.label ?? "Docket"}</span>
-        </header>
+            className="scrim"
+            aria-label="Close the menu"
+            onClick={() => setOpen(false)}
+          />
+        )}
 
-        <main className="content">{children}</main>
-        <div className="content-footer">{footer}</div>
+        <div className="main">
+          <header className="topbar">
+            <button
+              type="button"
+              className="icon-button drawer-only"
+              aria-label="Open the menu"
+              onClick={() => setOpen(true)}
+              suppressHydrationWarning
+            >
+              <SectionIcon name="menu" />
+            </button>
+
+            <TopbarTitles section={current?.label ?? "Docket"} />
+
+            <div className="topbar-tools">
+              <button
+                type="button"
+                className="topbar-search"
+                onClick={openCommandPalette}
+                aria-label="Search and commands"
+                suppressHydrationWarning
+              >
+                <SearchGlyph />
+                <span className="topbar-search-label">Search or jump to…</span>
+                <span className="kbd">⌘K</span>
+              </button>
+
+              {/* In the bar rather than at the bottom of the sidebar. Choosing a
+                  theme is something people do while looking at the page they
+                  want to change, and the sidebar's foot is the one place on the
+                  screen nobody looks while reading. */}
+              <ThemeToggle />
+            </div>
+          </header>
+
+          {/* Keyed by path so the entrance plays on every navigation: the page
+              that arrives is a different page, and saying so in motion is
+              cheaper to read than noticing the words changed. */}
+          <main key={pathname} className="content page-enter">
+            {children}
+          </main>
+          <div className="content-footer">{footer}</div>
+        </div>
       </div>
+    </PageTitleProvider>
+  );
+}
+
+/**
+ * The two labels the bar can be showing, in the same cell.
+ *
+ * Both are always in the document and both are always readable by a screen
+ * reader — what changes is which one is opaque. Swapping the text itself would
+ * make the bar announce a new heading on every scroll, which is noise.
+ */
+function TopbarTitles({ section }: { section: string }) {
+  const title = usePageTitle();
+
+  return (
+    <div className="topbar-titles">
+      <span className="topbar-title topbar-section">{section}</span>
+      <span className="topbar-page-title" aria-hidden="true">
+        {title}
+      </span>
     </div>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      className="h-4 w-4 shrink-0"
+    >
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="M10.5 10.5 14 14" />
+    </svg>
   );
 }

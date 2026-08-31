@@ -8,6 +8,7 @@
  */
 export type IconName =
   | "docket"
+  | "applications"
   | "board"
   | "calendar"
   | "archive"
@@ -24,6 +25,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="2.75" y="2" width="10.5" height="12" rx="1.5" />
       <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" />
+    </>
+  ),
+  /* A register: a rule per row, each with its own mark in the margin. */
+  applications: (
+    <>
+      <path d="M6 4.2h7.5M6 8h7.5M6 11.8h7.5" />
+      <circle cx="3" cy="4.2" r="1" />
+      <circle cx="3" cy="8" r="1" />
+      <circle cx="3" cy="11.8" r="1" />
     </>
   ),
   board: (
