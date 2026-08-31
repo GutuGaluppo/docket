@@ -200,6 +200,10 @@
   --color-paper: var(--ground);
   --color-card: var(--surface);
   --color-sheet: var(--raised);
+  /* `raised` is the name the rest of the interface uses for the top surface.
+     Without this alias `bg-raised` compiled to nothing, which is why the
+     command palette and the board cards were rendering see-through. */
+  --color-raised: var(--raised);
   --color-rule: var(--rule);
   --color-faint: var(--faint);
   --color-muted: var(--muted);
@@ -240,6 +244,14 @@
   --text-6xl: 4.125rem;
 
   --shadow-paper: var(--paper-shadow);
+
+  /* The elevation ramp, exposed as utilities. The variables existed; the
+     `shadow-elevation-*` classes the components were already written against
+     did not, so every lift in the interface was silently flat. */
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-elevation-4: var(--elevation-4);
 }
 
 /* =========================================================================== */
@@ -296,7 +308,8 @@
   }
 
   @keyframes pulse-highlight {
-    0%, 100% {
+    0%,
+    100% {
       background-color: transparent;
     }
     50% {
@@ -423,7 +436,9 @@
     padding: 7px 2px;
     border-radius: 0;
     width: 100%;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .field-input::placeholder {
     color: var(--faint);
@@ -678,16 +693,16 @@
     text-decoration: none;
   }
   .docket-table td {
-    padding: 11px 12px;  /* Reduced from 16px - more compact */
+    padding: 11px 12px; /* Reduced from 16px - more compact */
     border-bottom: 1px solid var(--rule);
     font-size: 15px;
     vertical-align: top;
     background: var(--surface);
-    transition: all 0.15s ease;  /* Smooth hover */
+    transition: all 0.15s ease; /* Smooth hover */
   }
   .docket-table tbody tr:hover td {
     background: var(--raised);
-    box-shadow: var(--elevation-1);  /* Subtle lift on hover */
+    box-shadow: var(--elevation-1); /* Subtle lift on hover */
   }
   .docket-cell-number {
     font-family: var(--font-mono);
@@ -2364,5 +2379,1204 @@
   }
   .btn:hover {
     transform: none;
+  }
+}
+
+/* ===========================================================================
+   Motion, and the furniture built on top of it.
+
+   Everything below this line belongs to one idea: a register does not have to
+   feel like a spreadsheet. Movement here is never decoration for its own sake —
+   each transition answers a question the reader would otherwise have to answer
+   by looking twice. Where am I. What just changed. What is under this row.
+
+   Durations are tokens rather than literals so the whole interface can be
+   slowed down or sped up in one place, and every one of them is cancelled
+   wholesale by the reduced-motion block further up the file.
+   =========================================================================== */
+
+:root {
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
+  --motion-slow: 380ms;
+  /* A gentle overshoot-free ease. Anything springier reads as playful, which
+     is the wrong register for a document about someone's livelihood. */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes docket-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes docket-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes docket-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes docket-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@layer components {
+  /* -------------------------------------------------------------------------
+     Entrances.
+
+     `.rise` is the whole vocabulary: one element arriving from just below,
+     fading as it comes. `--rise-delay` staggers a group so a grid of cards
+     reads left to right instead of appearing as one block, which is the
+     difference between a page that assembled itself and a page that blinked.
+  ------------------------------------------------------------------------- */
+  .rise {
+    animation: docket-rise var(--motion-slow) var(--ease-out) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  .fade-in {
+    animation: docket-fade var(--motion-base) var(--ease-out) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  /* The page itself, on every navigation. Keyed by pathname in the shell, so
+     React tears the old subtree down and this plays again. */
+  .page-enter {
+    animation: docket-rise var(--motion-base) var(--ease-out) both;
+  }
+
+  /* Anything that lifts under the pointer. One class instead of six copies of
+     the same three transitions. */
+  .lift {
+    transition:
+      transform var(--motion-fast) var(--ease-out),
+      box-shadow var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      background-color var(--motion-fast) var(--ease-out);
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--elevation-2);
+  }
+  .lift:active {
+    transform: translateY(0);
+  }
+
+  /* -------------------------------------------------------------------------
+     The heading, and what happens to it on the way down the page.
+
+     Scrolling past a title should not leave the reader without one. The h1
+     stays where it belongs; the topbar picks the same words up as it leaves,
+     one step smaller and still bold, and the explanatory line under the title
+     steps out of the way because by then it has been read or it never will be.
+  ------------------------------------------------------------------------- */
+  .page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 18px;
+  }
+
+  .page-eyebrow {
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+
+  .page-title {
+    font-size: clamp(var(--text-3xl), 4.4vw, var(--text-5xl));
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1;
+  }
+
+  /* The lede is the first thing to go. `grid-template-rows` animates between a
+     content-sized row and nothing at all, which collapses the space it held
+     instead of leaving a gap where a sentence used to be. */
+  .page-lede {
+    display: grid;
+    grid-template-rows: 1fr;
+    max-width: 62ch;
+    margin-top: 12px;
+    transition:
+      grid-template-rows var(--motion-slow) var(--ease-in-out),
+      opacity var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out),
+      margin-top var(--motion-slow) var(--ease-in-out);
+  }
+  .page-lede > * {
+    overflow: hidden;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .shell[data-scrolled="true"] .page-lede {
+    grid-template-rows: 0fr;
+    margin-top: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  /* The two labels the topbar can be showing, stacked in the same cell so one
+     can cross-fade into the other without the row changing height. */
+  .topbar-titles {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+  }
+
+  .topbar-titles > * {
+    grid-area: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition:
+      opacity var(--motion-base) var(--ease-out),
+      transform var(--motion-base) var(--ease-out);
+  }
+
+  /* One step down from the h1, and still bold — the point is that it is
+     recognisably the same title, not a breadcrumb of it. */
+  .topbar-page-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+  }
+
+  .shell[data-scrolled="true"] .topbar-page-title {
+    opacity: 1;
+    transform: none;
+  }
+  .shell[data-scrolled="true"] .topbar-section {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  /* -------------------------------------------------------------------------
+     The topbar as a working bar rather than a label.
+  ------------------------------------------------------------------------- */
+  .topbar {
+    gap: 14px;
+    height: 58px;
+  }
+
+  .topbar-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Not an input. It opens the command palette, which is the thing that can
+     actually answer a query — a second search box that only searches one
+     section would compete with it and lose. */
+  .topbar-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    width: clamp(160px, 26vw, 320px);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--ground);
+    padding: 7px 8px 7px 14px;
+    color: var(--faint);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition:
+      border-color var(--motion-fast) var(--ease-out),
+      background-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+  }
+  .topbar-search:hover {
+    border-color: var(--accent-edge);
+    color: var(--muted);
+  }
+  .topbar-search-label {
+    flex: 1;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kbd {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 2px 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .topbar-search-label,
+    .topbar-search .kbd {
+      display: none;
+    }
+    .topbar-search {
+      width: auto;
+      padding: 7px 10px;
+    }
+  }
+
+  /* -------------------------------------------------------------------------
+     Cards, panels and the small furniture the pages are assembled from.
+  ------------------------------------------------------------------------- */
+  .panel {
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--elevation-1);
+  }
+
+  .panel-pad {
+    padding: 20px;
+  }
+
+  /* The welcome strip at the top of the docket. A wash rather than a fill:
+     it has to be the friendliest thing on the page without becoming the
+     loudest. */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 18px;
+    border: 1px solid var(--accent-edge);
+    border-radius: 14px;
+    background:
+      radial-gradient(120% 160% at 0% 0%, var(--accent-wash), transparent 62%), var(--surface);
+    padding: 22px 24px;
+  }
+
+  /* A slow highlight passing over the strip once, on arrival. It says "this is
+     new" without a badge saying so. */
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in oklab, var(--accent) 8%, transparent) 50%,
+      transparent 70%
+    );
+    animation: docket-sweep 1.6s var(--ease-out) 0.3s both;
+    pointer-events: none;
+  }
+
+  .hero-mark {
+    display: grid;
+    height: 52px;
+    width: 52px;
+    flex: none;
+    place-items: center;
+    border-radius: 14px;
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-edge);
+    color: var(--accent);
+  }
+
+  .hero-body {
+    min-width: 220px;
+    flex: 1;
+  }
+
+  .hero-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+
+  .hero-note {
+    margin-top: 5px;
+    max-width: 64ch;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  /* Suggested next steps. Cards rather than a list, because each one is a
+     destination and a list of links reads as small print. */
+  .suggest-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  }
+
+  .suggest-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 18px;
+    color: inherit;
+    text-decoration: none;
+    box-shadow: var(--elevation-1);
+  }
+  .suggest-card:hover {
+    border-color: var(--accent-edge);
+  }
+
+  .suggest-icon {
+    display: grid;
+    height: 36px;
+    width: 36px;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+
+  .suggest-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+
+  .suggest-note {
+    font-size: var(--text-xs);
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  /* A figure and its caption, used by every overview on the site. */
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 16px 18px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .stat-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* -------------------------------------------------------------------------
+     Tabs, the filter row above a listing.
+  ------------------------------------------------------------------------- */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 2px;
+  }
+
+  .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 8px 8px 0 0;
+    padding: 9px 14px;
+    color: var(--muted);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition:
+      color var(--motion-fast) var(--ease-out),
+      background-color var(--motion-fast) var(--ease-out);
+  }
+  .tab:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  /* The underline slides between tabs rather than jumping, because the two
+     tabs are the same control in two states. */
+  .tab::after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    bottom: -3px;
+    left: 10px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform var(--motion-base) var(--ease-out);
+  }
+  .tab[aria-current="page"] {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .tab[aria-current="page"]::after {
+    transform: scaleX(1);
+  }
+
+  .tab-count {
+    border-radius: 999px;
+    background: var(--ground);
+    padding: 1px 7px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .tab[aria-current="page"] .tab-count {
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+
+  /* -------------------------------------------------------------------------
+     Row actions.
+
+     These used to be three words in the faintest grey the palette has, which
+     made the three things a person most often wants to do the three hardest
+     things to find. They are buttons now: bordered, filled on hover, and each
+     one coloured by what it does — neutral to correct, gold to file, rust to
+     destroy.
+  ------------------------------------------------------------------------- */
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .row-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    background: var(--raised);
+    padding: 5px 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+  }
+  .row-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+  .row-action:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .row-action:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .row-action[data-tone="file"]:hover:not(:disabled) {
+    border-color: var(--mark-edge);
+    background: var(--mark-wash);
+    color: var(--mark-ink);
+  }
+
+  .row-action[data-tone="danger"]:hover:not(:disabled),
+  .row-action[data-tone="danger"][data-armed="true"] {
+    border-color: var(--danger);
+    background: var(--danger-wash);
+    color: var(--danger);
+  }
+
+  /* -------------------------------------------------------------------------
+     The expandable stack cell.
+
+     Reading which technologies an advert asked for is the single most common
+     reason to open an entry, and opening an entry to read four words is a poor
+     trade. The cell expands in place instead.
+  ------------------------------------------------------------------------- */
+  .stack-cell {
+    display: flex;
+    max-width: 300px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .stack-more {
+    border: 1px dashed var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    padding: 1px 8px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition:
+      border-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out),
+      background-color var(--motion-fast) var(--ease-out);
+  }
+  .stack-more:hover {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+
+  .stack-chip {
+    display: inline-block;
+    border: 1px solid var(--accent-edge);
+    border-radius: 999px;
+    background: var(--accent-wash);
+    padding: 1px 9px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    animation: docket-fade var(--motion-fast) var(--ease-out) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  /* -------------------------------------------------------------------------
+     Modals.
+
+     One shape for every dialog in the product: a scrim that darkens and blurs,
+     a panel that arrives from slightly below, and a header/body/footer that
+     never scroll as one piece.
+  ------------------------------------------------------------------------- */
+  .modal {
+    max-width: min(94vw, 620px);
+    width: min(94vw, 620px);
+    margin: auto;
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    background: var(--raised);
+    padding: 0;
+    color: var(--text);
+    box-shadow: var(--elevation-4);
+  }
+  .modal[open] {
+    animation: docket-pop var(--motion-base) var(--ease-out) both;
+  }
+  .modal::backdrop {
+    background: color-mix(in oklab, #000 55%, transparent);
+    backdrop-filter: blur(3px);
+    animation: docket-fade var(--motion-base) var(--ease-out) both;
+  }
+
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--rule);
+    padding: 20px 22px 16px;
+  }
+
+  .modal-title {
+    font-size: var(--text-md);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .modal-sub {
+    margin-top: 3px;
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+
+  .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 62vh;
+    overflow-y: auto;
+    padding: 20px 22px;
+  }
+
+  .modal-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid var(--rule);
+    padding: 14px 22px;
+  }
+
+  .modal-close {
+    display: grid;
+    height: 30px;
+    width: 30px;
+    flex: none;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+  }
+  .modal-close:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .btn-danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #fff;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background: var(--rust-strong);
+  }
+
+  /* -------------------------------------------------------------------------
+     The entry sheet — one application, everything known about it.
+
+     A two-column brief on a wide screen: the account of the role on the left,
+     the facts and the actions on the right where they stay in reach while the
+     advert is read.
+  ------------------------------------------------------------------------- */
+  .sheet-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .sheet-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .sheet-company {
+    font-size: clamp(var(--text-2xl), 3.4vw, var(--text-4xl));
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.05;
+  }
+
+  .sheet-position {
+    margin-top: 4px;
+    font-size: var(--text-md);
+    color: var(--muted);
+  }
+
+  .sheet-grid {
+    display: grid;
+    align-items: start;
+    gap: 22px;
+    margin-top: 26px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 1000px) {
+    .sheet-grid {
+      grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+    }
+    .sheet-aside {
+      position: sticky;
+      top: 74px;
+    }
+  }
+
+  .sheet-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sheet-block {
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 20px;
+  }
+
+  .sheet-block + .sheet-block {
+    margin-top: 18px;
+  }
+
+  .sheet-block-title {
+    margin-bottom: 12px;
+    color: var(--accent);
+  }
+
+  .sheet-facts {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .sheet-fact-label {
+    display: block;
+    margin-bottom: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .sheet-fact-value {
+    font-size: var(--text-sm);
+    word-break: break-word;
+  }
+
+  /* The advert, kept verbatim and given room to be long. */
+  .sheet-advert {
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--raised);
+    padding: 18px;
+    font-size: var(--text-sm);
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  /* A vertical account of what happened and when. */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .timeline li {
+    position: relative;
+    padding: 0 0 16px 22px;
+    border-left: 1px solid var(--rule);
+  }
+  .timeline li:last-child {
+    border-left-color: transparent;
+    padding-bottom: 0;
+  }
+
+  .timeline li::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: -5px;
+    height: 9px;
+    width: 9px;
+    border-radius: 999px;
+    border: 2px solid var(--surface);
+    background: var(--accent);
+  }
+
+  .timeline-when {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+
+  .timeline-what {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--text-sm);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--accent-edge);
+    border-radius: 999px;
+    background: var(--accent-wash);
+    padding: 4px 12px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-pill[data-tone="danger"] {
+    border-color: var(--danger);
+    background: var(--danger-wash);
+    color: var(--danger);
+  }
+  .status-pill::before {
+    content: "";
+    height: 6px;
+    width: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  /* -------------------------------------------------------------------------
+     The board's opening line. Not an instruction manual — one sentence that
+     says what the columns are for and where the reader is trying to end up.
+  ------------------------------------------------------------------------- */
+  .board-line {
+    display: flex;
+    color: var(--text);
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    font-size: var(--text-md);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .board-line em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  /* -------------------------------------------------------------------------
+     The CV, as a page rather than a form.
+
+     One A4 sheet in the middle of the screen and the recommendations beside it.
+     Everything that was a field-strewn control panel is now either on the sheet
+     itself or behind a button in the strip above it — a CV is a document, and
+     the screen it is edited on should look like the thing being made.
+  ------------------------------------------------------------------------- */
+  .cv-page {
+    display: grid;
+    align-items: start;
+    gap: 24px;
+    margin-top: 20px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 1180px) {
+    .cv-page {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+    .cv-panel {
+      position: sticky;
+      top: 74px;
+      max-height: calc(100dvh - 92px);
+      overflow-y: auto;
+    }
+  }
+
+  /* The strip above the sheet. Everything that is about the document rather
+     than in it. */
+  .cv-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 10px 14px;
+  }
+
+  .cv-strip-name {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cv-strip-title {
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cv-strip-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .cv-strip-unsaved {
+    color: var(--mark-ink);
+  }
+
+  /* The sheet. 210mm at a scale that fits a laptop screen, capped so it never
+     grows past the column it sits in. The shadow and the ever-so-slightly warm
+     white are doing the whole job of saying "this is paper". */
+  .cv-sheet-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 8px;
+  }
+
+  .cv-sheet {
+    width: min(100%, 794px);
+    min-height: 720px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--raised);
+    box-shadow: var(--elevation-3);
+    padding: clamp(24px, 4.4vw, 56px);
+    animation: docket-rise var(--motion-slow) var(--ease-out) both;
+  }
+
+  /* Inside the sheet the document is text on paper, not a stack of cards. The
+     bordered boxes the editor used to draw are pulled back to hairlines. */
+  .cv-sheet .cv-section {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+
+  .cv-sheet .cv-document {
+    gap: 26px;
+  }
+
+  .cv-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* The figure, small enough to live in a sidebar. */
+  .cv-score {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 16px;
+  }
+
+  .cv-score-value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: var(--text-4xl);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .cv-score-body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* -------------------------------------------------------------------------
+     The map of where the applications went.
+  ------------------------------------------------------------------------- */
+  .map-panel {
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .map-canvas {
+    /* The projection is drawn at a fixed aspect and scaled by the container,
+       so the same component works from a phone to a wide monitor. */
+    width: 100%;
+    background:
+      radial-gradient(120% 120% at 50% 0%, var(--accent-wash), transparent 70%), var(--surface);
+  }
+
+  .map-land {
+    fill: var(--folder);
+    stroke: var(--rule);
+    stroke-width: 0.4;
+    outline: none;
+    transition: fill var(--motion-fast) var(--ease-out);
+  }
+  .map-land:hover {
+    fill: color-mix(in oklab, var(--accent) 12%, var(--folder));
+  }
+  .map-land[data-active="true"] {
+    fill: color-mix(in oklab, var(--accent) 22%, var(--folder));
+  }
+
+  .map-pin {
+    cursor: pointer;
+    transition:
+      transform var(--motion-base) var(--ease-out),
+      opacity var(--motion-fast) var(--ease-out);
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .map-pin circle {
+    fill: var(--accent);
+    stroke: var(--raised);
+    stroke-width: 1.5;
+    opacity: 0.85;
+    transition:
+      opacity var(--motion-fast) var(--ease-out),
+      r var(--motion-base) var(--ease-out);
+  }
+  .map-pin:hover circle,
+  .map-pin[data-selected="true"] circle {
+    opacity: 1;
+  }
+  .map-pin[data-selected="true"] circle {
+    stroke: var(--accent);
+    stroke-width: 2.5;
+  }
+
+  /* A ring that leaves the pin once, on selection, so the eye can find which
+     of forty dots was just clicked. */
+  @keyframes map-ping {
+    from {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.6);
+    }
+  }
+  .map-ping {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: map-ping 1.4s var(--ease-out) infinite;
+  }
+
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    border-top: 1px solid var(--rule);
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .map-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .map-list a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--rule);
+    border-radius: 9px;
+    background: var(--raised);
+    padding: 10px 12px;
+    color: inherit;
+    text-decoration: none;
+    animation: docket-rise var(--motion-base) var(--ease-out) both;
+    animation-delay: var(--rise-delay, 0ms);
+    transition:
+      border-color var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+  }
+  .map-list a:hover {
+    transform: translateX(2px);
+    border-color: var(--accent);
+  }
+
+  /* -------------------------------------------------------------------------
+     The CV panels, adapted to the column they now live in.
+
+     The figure and the recommendations were designed as two halves of a wide
+     layout. In a 340px sidebar the same markup needs a smaller number, a
+     tighter grid for the dimension bars, and no second sticky context fighting
+     the one the column already has.
+  ------------------------------------------------------------------------- */
+  .cv-panel .cv-match,
+  .cv-panel .cv-aside {
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .cv-panel .cv-match-score {
+    font-size: var(--text-4xl);
+  }
+
+  .cv-panel .cv-bar {
+    grid-template-columns: minmax(0, 9ch) minmax(40px, 1fr) 4ch;
+  }
+
+  .cv-panel .cv-aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Inside the modal the advert form is the modal's only content, so it drops
+     the card it used to draw around itself. */
+  .modal-body > .cv-source {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
   }
 }
