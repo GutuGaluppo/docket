@@ -50,7 +50,6 @@ export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede
   board: {
     eyebrow: "Proceedings",
     title: "Board",
-    lede: "Every entry starts in the first column and moves right as the process advances. Drag a card, or use the selector on it — both do the same thing, and every move is written to the entry’s history. The last column files the entry as rejected and sends it to the archive.",
   },
   calendar: {
     eyebrow: "Hearings",

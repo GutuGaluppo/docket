@@ -85,7 +85,17 @@ export default function BoardPage() {
             </Suspense>
           </div>
         }
-      />
+      >
+        {/*
+          What used to be here was three sentences explaining that cards can be
+          dragged. Anyone who has seen a board knows that, and the one line a
+          person opening this page actually needs is the one that says what all
+          the dragging is for.
+        */}
+        <span className="board-line">
+          Keep it moving, one column at a time — <em>see you in Offer Received.</em>
+        </span>
+      </SectionHeader>
 
       <div className="mt-6">
         <Suspense fallback={<BoardSkeleton />}>

@@ -14,7 +14,11 @@ export default function Loading() {
             </Placeholder>
           </div>
         }
-      />
+      >
+        <span className="board-line">
+          Keep it moving, one column at a time — <em>see you in Offer Received.</em>
+        </span>
+      </SectionHeader>
       <div className="mt-6">
         <BoardSkeleton />
       </div>
