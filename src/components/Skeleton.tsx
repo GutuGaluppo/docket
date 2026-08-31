@@ -127,35 +127,22 @@ export function FindingsSkeleton() {
  */
 export function CvSkeleton() {
   return (
-    <Placeholder label="your CV" className="mt-6 flex flex-col gap-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-3 rounded-[3px] border border-rule bg-card p-5">
-          <Bar className="h-2.5 w-24" />
-          <Bar className="h-10 w-28" />
+    <Placeholder label="your CV" className="mt-6 flex flex-col gap-5">
+      <Bar className="h-14 w-full rounded-xl" />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex justify-center">
+          <div className="flex w-full max-w-[794px] flex-col gap-4 rounded border border-rule bg-sheet p-10 shadow-elevation-3">
+            <Bar className="h-8 w-64" />
+            <Bar className="h-3 w-44" />
+            {Array.from({ length: 8 }, (_, index) => (
+              <Bar key={index} className="h-9 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <Bar className="h-32 w-full rounded-xl" />
           {Array.from({ length: 4 }, (_, index) => (
-            <Bar key={index} className="h-3 w-full" />
-          ))}
-        </div>
-        <div className="flex flex-col gap-3 rounded-[3px] border border-rule bg-card p-5">
-          <Bar className="h-2.5 w-20" />
-          <Bar className="h-9 w-full" />
-          <Bar className="h-28 w-full" />
-          <Bar className="h-10 w-56" />
-        </div>
-      </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
-        <div className="flex flex-col gap-4 rounded-[3px] border border-rule bg-card p-5">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div key={index} className="flex flex-col gap-2">
-              <Bar className="h-3 w-24" />
-              <Bar className="h-9 w-full" />
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col gap-3 rounded-[3px] border border-rule bg-card p-5">
-          <Bar className="h-2.5 w-32" />
-          {Array.from({ length: 5 }, (_, index) => (
-            <Bar key={index} className="h-16 w-full" />
+            <Bar key={index} className="h-16 w-full rounded-xl" />
           ))}
         </div>
       </div>
