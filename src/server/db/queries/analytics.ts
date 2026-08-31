@@ -3,7 +3,13 @@ import "server-only";
 import { and, count, eq, isNotNull, ne, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { applications, applicationTags, interviews, stages, statusEvents } from "@/server/db/schema";
+import {
+  applications,
+  applicationTags,
+  interviews,
+  stages,
+  statusEvents,
+} from "@/server/db/schema";
 import type { Scope } from "./scope";
 
 /**
@@ -120,7 +126,10 @@ export async function getRateByCountry(scope: Scope, limit = 12): Promise<RateRo
     })
     .from(applications)
     .where(
-      scope.owned(applications.userId, and(isNotNull(applications.country), ne(applications.country, ""))),
+      scope.owned(
+        applications.userId,
+        and(isNotNull(applications.country), ne(applications.country, "")),
+      ),
     )
     .groupBy(applications.country)
     .orderBy(sql`count(*) desc`)
@@ -151,4 +160,81 @@ export async function getFunnel(scope: Scope): Promise<Array<{ stage: string; n:
     .orderBy(sql`${stages.position} asc`);
 
   return rows.map((r) => ({ stage: r.stage, n: Number(r.n) }));
+}
+
+/**
+ * One application, reduced to what a pin on the map has to be able to name.
+ *
+ * Deliberately narrow. A country with forty entries in it would otherwise put
+ * forty job adverts into the page's payload to show forty company names.
+ */
+export type PlacedEntry = {
+  id: string;
+  protocolNumber: number;
+  company: string;
+  position: string;
+  stage: string | null;
+  rejected: boolean;
+};
+
+/** Every entry that names somewhere, grouped by the somewhere it names. */
+export type Place = {
+  city: string | null;
+  country: string;
+  entries: PlacedEntry[];
+};
+
+/**
+ * The register as places rather than as rows.
+ *
+ * Grouping happens here rather than in SQL because the grouping key is a pair
+ * that may be half-null — an entry can name a country and no city — and because
+ * the rows are wanted anyway: the point of clicking a pin is to read which
+ * applications are behind it, so fetching counts first and details second would
+ * be two round trips for one question.
+ */
+export async function getPlaces(scope: Scope): Promise<Place[]> {
+  const rows = await db
+    .select({
+      id: applications.id,
+      protocolNumber: applications.protocolNumber,
+      company: applications.company,
+      position: applications.position,
+      city: applications.city,
+      country: applications.country,
+      rejectedAt: applications.rejectedAt,
+      stage: sql<
+        string | null
+      >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+    })
+    .from(applications)
+    .where(
+      scope.owned(
+        applications.userId,
+        and(isNotNull(applications.country), ne(applications.country, "")),
+      ),
+    )
+    .orderBy(sql`${applications.protocolNumber} desc`);
+
+  const grouped = new Map<string, Place>();
+
+  for (const row of rows) {
+    const country = row.country ?? "";
+    if (!country) continue;
+    const city = row.city || null;
+    const key = `${city ?? ""}|${country}`;
+
+    const place = grouped.get(key) ?? { city, country, entries: [] };
+    place.entries.push({
+      id: row.id,
+      protocolNumber: row.protocolNumber,
+      company: row.company,
+      position: row.position,
+      stage: row.stage,
+      rejected: row.rejectedAt !== null,
+    });
+    grouped.set(key, place);
+  }
+
+  return [...grouped.values()].sort((a, b) => b.entries.length - a.entries.length);
 }

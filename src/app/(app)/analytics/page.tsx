@@ -4,15 +4,18 @@ import Link from "next/link";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { ProNotice } from "@/components/billing/ProNotice";
+import { ApplicationsMap } from "@/components/analytics/ApplicationsMap";
 import { RateTable } from "@/components/analytics/RateTable";
 import { FindingsSkeleton } from "@/components/Skeleton";
 import { canUseAnalytics } from "@/server/billing/limits";
 import { requireScope } from "@/server/auth/session";
 import {
   getFunnel,
+  getPlaces,
   getRateByCountry,
   getRateByTag,
   getSummary,
+  type Place,
   type RateRow,
   type Summary,
 } from "@/server/db/queries/analytics";
@@ -25,9 +28,9 @@ export const metadata: Metadata = { title: "Analytics" };
  */
 function Figure({ value, label, hint }: { value: string; label: string; hint?: string }) {
   return (
-    <div className="flex flex-col gap-1 border-t border-rule pt-3">
-      <b className="font-mono text-3xl leading-none font-bold tabular-nums">{value}</b>
-      <span className="font-mono text-[10px] tracking-[0.14em] text-muted uppercase">{label}</span>
+    <div className="stat rise">
+      <b className="stat-value">{value}</b>
+      <span className="stat-label">{label}</span>
       {hint && <span className="text-xs text-faint">{hint}</span>}
     </div>
   );
@@ -41,6 +44,7 @@ type Report =
       byTag: RateRow[];
       byCountry: RateRow[];
       funnel: Array<{ stage: string; n: number }>;
+      places: Place[];
     };
 
 async function Findings({ report }: { report: Promise<Report> }) {
@@ -60,15 +64,15 @@ async function Findings({ report }: { report: Promise<Report> }) {
     );
   }
 
-  const { summary, byTag, byCountry, funnel } = data;
+  const { summary, byTag, byCountry, funnel, places } = data;
 
   if (summary.total === 0) {
     return (
-      <div className="mt-6 rounded-[3px] border border-dashed border-rule bg-card px-6 py-12 text-center">
+      <div className="panel panel-pad rise mt-6 text-center">
         <p className="eyebrow mb-2.5 text-stamp">Nothing to measure</p>
         <p className="text-base text-muted">
           Rates need a denominator.{" "}
-          <Link href="/docket" className="border-b border-stamp text-ink">
+          <Link href="/docket/new" className="border-b border-stamp text-ink">
             Stamp an application
           </Link>{" "}
           and this page starts filling in.
@@ -140,6 +144,16 @@ async function Findings({ report }: { report: Promise<Report> }) {
         </div>
       </section>
 
+      {/*
+        The map before the tables, because it answers the question the tables
+        cannot: not how many, but where — and whether the shape of that is what
+        anyone intended.
+      */}
+      <section className="flex flex-col gap-3">
+        <h2 className="eyebrow text-muted">Where you applied</h2>
+        <ApplicationsMap places={places} />
+      </section>
+
       <div className="grid gap-10 lg:grid-cols-2">
         <RateTable caption="By stack" unit="Technology" rows={byTag} />
         <RateTable caption="By country" unit="Country" rows={byCountry} />
@@ -164,14 +178,15 @@ export default function AnalyticsPage() {
     const verdict = await canUseAnalytics(scope);
     if (!verdict.allowed) return { allowed: false };
 
-    const [summary, byTag, byCountry, funnel] = await Promise.all([
+    const [summary, byTag, byCountry, funnel, places] = await Promise.all([
       getSummary(scope),
       getRateByTag(scope),
       getRateByCountry(scope),
       getFunnel(scope),
+      getPlaces(scope),
     ]);
 
-    return { allowed: true, summary, byTag, byCountry, funnel };
+    return { allowed: true, summary, byTag, byCountry, funnel, places };
   });
 
   return (
