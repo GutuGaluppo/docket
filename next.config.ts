@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
        */
       {
         source:
-          "/:path(docket|board|calendar|archive|cv|analytics|settings|sign-in|monitoring)/:rest*",
+          "/:path(docket|applications|board|calendar|archive|cv|analytics|settings|sign-in|monitoring)/:rest*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {
