@@ -1,10 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  Marker,
+  ZoomableGroup,
+  type ZoomableGroupProps,
+} from "react-simple-maps";
 
 import { atlasName, locate } from "@/lib/geo/coordinates";
+import {
+  claimsGesture,
+  focusOn,
+  isWorld,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  wasDrag,
+  WORLD,
+  zoomBy,
+  ZOOM_STEP,
+  type View,
+} from "@/lib/geo/view";
 import { protocolNumber } from "@/lib/format";
 import type { Place } from "@/server/db/queries/analytics";
 
@@ -27,6 +46,9 @@ import type { Place } from "@/server/db/queries/analytics";
  */
 const TOPOLOGY = "/geo/countries-110m.json";
 
+const WIDTH = 880;
+const HEIGHT = 440;
+
 /** Pin area grows with the count, so ten entries do not read as ten times one. */
 function radius(count: number): number {
   return 3.5 + Math.sqrt(count) * 2.2;
@@ -40,6 +62,22 @@ type Placed = Place & {
 
 export function ApplicationsMap({ places }: { places: readonly Place[] }) {
   const [selected, setSelected] = useState<string | null>(null);
+
+  /**
+   * Two pieces of zoom state, and they are not the same thing.
+   *
+   * `view` is what the map is *told*. It changes when a button is pressed and
+   * when a gesture finishes — never while one is in progress, because
+   * `ZoomableGroup` applies its `center`/`zoom` props by driving the d3 zoom
+   * behaviour, and doing that mid-drag would fight the hand holding the map.
+   *
+   * `scale` is what the map currently *is*, updated on every frame of a
+   * gesture. Nothing but the pins reads it: they divide their radius by it so a
+   * dot stays a dot at fourteen times in, instead of swallowing the country
+   * it is standing on.
+   */
+  const [view, setView] = useState<View>(WORLD);
+  const [scale, setScale] = useState(1);
 
   /**
    * Only the places that can be drawn. "Remote — Europe" is a real thing to
@@ -71,6 +109,51 @@ export function ApplicationsMap({ places }: { places: readonly Place[] }) {
 
   const withEntries = useMemo(() => new Set(pins.map((pin) => atlasName(pin.country))), [pins]);
 
+  /** Where the pointer went down, so a pan is not mistaken for a click. */
+  const press = useRef<{ x: number; y: number } | null>(null);
+
+  function goTo(pin: Placed) {
+    setSelected(pin.key);
+    setView((current) => focusOn(current, pin.point));
+  }
+
+  const onMove = useCallback((position: { zoom: number }) => setScale(position.zoom), []);
+
+  const onMoveEnd = useCallback((position: { coordinates: [number, number]; zoom: number }) => {
+    setView({ coordinates: position.coordinates, zoom: position.zoom });
+    setScale(position.zoom);
+  }, []);
+
+  /**
+   * The land, memoised into a stable element.
+   *
+   * A zoom gesture re-renders this component on every frame to keep the pins
+   * sized. Without this the 177 country paths would be rebuilt on every one of
+   * those frames for a set of props that never changes.
+   */
+  const land = useMemo(
+    () => (
+      <Geographies geography={TOPOLOGY}>
+        {({
+          geographies,
+        }: {
+          geographies: Array<{ rsmKey: string; properties: { name: string } }>;
+        }) =>
+          geographies.map((geography) => (
+            <Geography
+              key={geography.rsmKey}
+              geography={geography}
+              className="map-land"
+              data-active={withEntries.has(geography.properties.name) ? "true" : undefined}
+              tabIndex={-1}
+            />
+          ))
+        }
+      </Geographies>
+    ),
+    [withEntries],
+  );
+
   const current = pins.find((pin) => pin.key === selected) ?? null;
   const label = (place: Placed) => (place.city ? `${place.city}, ${place.country}` : place.country);
 
@@ -84,68 +167,117 @@ export function ApplicationsMap({ places }: { places: readonly Place[] }) {
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="map-panel">
+      <div
+        className="map-panel"
+        onPointerDownCapture={(event) => {
+          press.current = { x: event.clientX, y: event.clientY };
+        }}
+      >
+        <div className="map-controls">
+          <button
+            type="button"
+            className="map-control"
+            onClick={() => setView((current) => zoomBy(current, ZOOM_STEP))}
+            disabled={view.zoom >= MAX_ZOOM}
+            aria-label="Zoom in"
+            suppressHydrationWarning
+          >
+            <Glyph d="M8 4.2v7.6M4.2 8h7.6" />
+          </button>
+          <button
+            type="button"
+            className="map-control"
+            onClick={() => setView((current) => zoomBy(current, 1 / ZOOM_STEP))}
+            disabled={view.zoom <= MIN_ZOOM}
+            aria-label="Zoom out"
+            suppressHydrationWarning
+          >
+            <Glyph d="M4.2 8h7.6" />
+          </button>
+          <button
+            type="button"
+            className="map-control"
+            onClick={() => setView(WORLD)}
+            disabled={isWorld(view)}
+            aria-label="Show the whole world again"
+            title="Reset the view"
+            suppressHydrationWarning
+          >
+            <Glyph d="M6 2.6H2.6V6M10 2.6h3.4V6M6 13.4H2.6V10M10 13.4h3.4V10" />
+          </button>
+        </div>
+
         <ComposableMap
           className="map-canvas"
           projection="geoEqualEarth"
           projectionConfig={{ scale: 165 }}
-          width={880}
-          height={420}
-          // The poles hold no jobs and a great deal of empty pixels.
-          viewBox="0 30 880 360"
+          width={WIDTH}
+          height={HEIGHT}
         >
-          <Geographies geography={TOPOLOGY}>
-            {({
-              geographies,
-            }: {
-              geographies: Array<{ rsmKey: string; properties: { name: string } }>;
-            }) =>
-              geographies.map((geography) => (
-                <Geography
-                  key={geography.rsmKey}
-                  geography={geography}
-                  className="map-land"
-                  data-active={withEntries.has(geography.properties.name) ? "true" : undefined}
-                  tabIndex={-1}
-                />
-              ))
-            }
-          </Geographies>
+          <ZoomableGroup
+            // Copied rather than passed through: the view's pair is readonly,
+            // and the library's prop is not. The effect inside it depends on the
+            // two numbers, not on the array, so a fresh one costs nothing.
+            center={[view.coordinates[0], view.coordinates[1]]}
+            zoom={view.zoom}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+            // Panning stops at the edges of the projection. Without this the
+            // world can be dragged off screen entirely, and the only way back
+            // is a button the person has just scrolled away from.
+            translateExtent={[
+              [0, 0],
+              [WIDTH, HEIGHT],
+            ]}
+            filterZoomEvent={GESTURE_FILTER}
+            onMove={onMove}
+            onMoveEnd={onMoveEnd}
+          >
+            {land}
 
-          {pins.map((pin) => {
-            const chosen = pin.key === selected;
-            return (
-              <Marker
-                key={pin.key}
-                coordinates={pin.point as [number, number]}
-                className="map-pin"
-                data-selected={chosen ? "true" : undefined}
-                onClick={() => setSelected(chosen ? null : pin.key)}
-                role="button"
-                tabIndex={0}
-                aria-label={`${label(pin)} — ${pin.entries.length} application${
-                  pin.entries.length === 1 ? "" : "s"
-                }`}
-                onKeyDown={(event: React.KeyboardEvent) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    setSelected(chosen ? null : pin.key);
-                  }
-                }}
-              >
-                {chosen && <circle className="map-ping" r={radius(pin.entries.length)} />}
-                <circle r={radius(pin.entries.length)} />
-                <title>
-                  {label(pin)} — {pin.entries.length}
-                </title>
-              </Marker>
-            );
-          })}
+            {pins.map((pin) => {
+              const chosen = pin.key === selected;
+              // Divided by the live scale so a pin keeps its size on screen
+              // while the country under it grows.
+              const r = radius(pin.entries.length) / scale;
+              return (
+                <Marker
+                  key={pin.key}
+                  coordinates={pin.point as [number, number]}
+                  className="map-pin"
+                  data-selected={chosen ? "true" : undefined}
+                  onClick={(event: React.MouseEvent) => {
+                    if (wasDrag(press.current, event)) return;
+                    if (chosen) setSelected(null);
+                    else goTo(pin);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${label(pin)} — ${pin.entries.length} application${
+                    pin.entries.length === 1 ? "" : "s"
+                  }`}
+                  onKeyDown={(event: React.KeyboardEvent) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      if (chosen) setSelected(null);
+                      else goTo(pin);
+                    }
+                  }}
+                >
+                  {chosen && <circle className="map-ping" r={r} />}
+                  <circle r={r} />
+                  <title>
+                    {label(pin)} — {pin.entries.length}
+                  </title>
+                </Marker>
+              );
+            })}
+          </ZoomableGroup>
         </ComposableMap>
 
         <p className="map-legend">
           <span>{pins.length} places</span>
-          <span>Pin size is the number of applications</span>
+          <span>Drag to pan · ⌘ or ctrl + scroll to zoom</span>
           {unplaceable > 0 && <span>{unplaceable} remote, not on the map</span>}
         </p>
       </div>
@@ -202,7 +334,8 @@ export function ApplicationsMap({ places }: { places: readonly Place[] }) {
           <>
             <h3 className="eyebrow mb-3 text-muted">Where they went</h3>
             <p className="mb-4 text-sm leading-relaxed text-muted">
-              Click a pin to read the applications behind it.
+              Click a pin to read the applications behind it, or pick a place here — the map travels
+              to it either way.
             </p>
             <ul className="map-list">
               {pins.slice(0, 6).map((pin, index) => (
@@ -210,7 +343,7 @@ export function ApplicationsMap({ places }: { places: readonly Place[] }) {
                   <button
                     type="button"
                     className="w-full cursor-pointer text-left"
-                    onClick={() => setSelected(pin.key)}
+                    onClick={() => goTo(pin)}
                     suppressHydrationWarning
                     style={{ "--rise-delay": `${index * 35}ms` } as React.CSSProperties}
                   >
@@ -226,5 +359,31 @@ export function ApplicationsMap({ places }: { places: readonly Place[] }) {
         )}
       </aside>
     </div>
+  );
+}
+
+/**
+ * The rule lives in `@/lib/geo/view`, where it can be read and tested without a
+ * browser. This is only the adapter: the published types describe the callback
+ * as receiving the element, while the implementation passes the DOM event, so
+ * the mismatch is narrowed here once rather than cast at the point of use.
+ */
+const GESTURE_FILTER = ((event: Event) =>
+  claimsGesture(event as MouseEvent)) as unknown as ZoomableGroupProps["filterZoomEvent"];
+
+function Glyph({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+    >
+      <path d={d} />
+    </svg>
   );
 }

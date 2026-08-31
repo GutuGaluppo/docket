@@ -3425,24 +3425,77 @@
      The map of where the applications went.
   ------------------------------------------------------------------------- */
   .map-panel {
+    position: relative;
     overflow: hidden;
     border: 1px solid var(--rule);
     border-radius: 12px;
     background: var(--surface);
   }
 
+  /* The controls sit over the map rather than under it: zooming is something
+     you do while looking at the thing being zoomed, and a button below the
+     frame means looking away between every step. */
+  .map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .map-control {
+    display: grid;
+    height: 30px;
+    width: 30px;
+    place-items: center;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--raised);
+    color: var(--muted);
+    cursor: pointer;
+    box-shadow: var(--elevation-1);
+    transition:
+      background-color var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out);
+  }
+  .map-control:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+  .map-control:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
   .map-canvas {
     /* The projection is drawn at a fixed aspect and scaled by the container,
        so the same component works from a phone to a wide monitor. */
+    display: block;
     width: 100%;
+    /* Panning is a drag, so the cursor has to say so before the drag starts,
+       and the browser must not claim the gesture as a scroll first. */
+    cursor: grab;
+    touch-action: none;
     background:
       radial-gradient(120% 120% at 50% 0%, var(--accent-wash), transparent 70%), var(--surface);
   }
+  .map-canvas:active {
+    cursor: grabbing;
+  }
 
+  /* Every stroke on the map is non-scaling. The group the pins and the
+     coastlines live in is transformed by the zoom, so without this a hairline
+     border becomes a four-pixel band at ten times in, and a pin's outline
+     swallows the pin. */
   .map-land {
     fill: var(--folder);
     stroke: var(--rule);
     stroke-width: 0.4;
+    vector-effect: non-scaling-stroke;
     outline: none;
     transition: fill var(--motion-fast) var(--ease-out);
   }
@@ -3465,10 +3518,9 @@
     fill: var(--accent);
     stroke: var(--raised);
     stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
     opacity: 0.85;
-    transition:
-      opacity var(--motion-fast) var(--ease-out),
-      r var(--motion-base) var(--ease-out);
+    transition: opacity var(--motion-fast) var(--ease-out);
   }
   .map-pin:hover circle,
   .map-pin[data-selected="true"] circle {
@@ -3495,6 +3547,7 @@
     fill: none;
     stroke: var(--accent);
     stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
     transform-box: fill-box;
     transform-origin: center;
     animation: map-ping 1.4s var(--ease-out) infinite;
