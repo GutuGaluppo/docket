@@ -1,8 +1,8 @@
-import { FiguresSkeleton, FormSkeleton, TableSkeleton } from "@/components/Skeleton";
+import { Bar, Placeholder } from "@/components/Skeleton";
 import { SectionHeader } from "@/components/SectionHeader";
 
 /**
- * What the register looks like the instant a tab is clicked.
+ * What the desk looks like the instant a tab is clicked.
  *
  * The heading is the real one — same words, same weights, from the same file
  * the page reads — so the section announces itself before the server has been
@@ -11,17 +11,26 @@ import { SectionHeader } from "@/components/SectionHeader";
 export default function Loading() {
   return (
     <>
-      <SectionHeader
-        section="docket"
-        aside={
-          <div className="flex gap-6 font-mono">
-            <FiguresSkeleton label="the counters" />
-          </div>
-        }
-      />
-      <FormSkeleton />
-      <div className="my-8 mb-2.5" />
-      <TableSkeleton label="the register" />
+      <SectionHeader section="docket" />
+      <div className="mt-7 flex flex-col gap-9">
+        <Placeholder label="the greeting">
+          <Bar className="h-24 w-full" />
+        </Placeholder>
+        <Placeholder
+          label="the counters"
+          className="grid gap-3.5 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
+        >
+          <Bar className="h-21.5 w-full" />
+          <Bar className="h-21.5 w-full" />
+          <Bar className="h-21.5 w-full" />
+          <Bar className="h-21.5 w-full" />
+        </Placeholder>
+        <Placeholder label="the latest entries" className="flex flex-col gap-2.5">
+          <Bar className="h-14 w-full" />
+          <Bar className="h-14 w-full" />
+          <Bar className="h-14 w-full" />
+        </Placeholder>
+      </div>
     </>
   );
 }

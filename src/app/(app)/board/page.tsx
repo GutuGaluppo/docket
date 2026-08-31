@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { Board } from "@/components/board/Board";
-import { DossierProvider } from "@/components/docket/EntryDossier";
 import { Bar, BoardSkeleton, Placeholder } from "@/components/Skeleton";
 import { requireScope } from "@/server/auth/session";
 import { getBoard, type BoardColumn } from "@/server/db/queries/board";
@@ -50,7 +49,7 @@ async function Proceedings({
           ) : (
             <>
               Your docket is empty, so the board is too.{" "}
-              <Link href="/docket" className="border-b border-stamp text-ink">
+              <Link href="/docket/new" className="border-b border-stamp text-ink">
                 Stamp an application
               </Link>{" "}
               and it will appear in the first column.
@@ -61,11 +60,7 @@ async function Proceedings({
     );
   }
 
-  return (
-    <DossierProvider>
-      <Board columns={columns} filed={archive.total} />
-    </DossierProvider>
-  );
+  return <Board columns={columns} filed={archive.total} />;
 }
 
 export default function BoardPage() {

@@ -71,7 +71,10 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
         // travels back unchanged rather than being re-read from this browser.
         timezone: entry.timezone ?? "",
       });
-      if (result.ok) router.push("/docket");
+      // Back to the entry, not to the listing: a correction is made while
+      // looking at one record, and the record is what should be on screen when
+      // it is saved.
+      if (result.ok) router.push(`/applications/${entry.id}`);
       else setServerError(result.error);
     });
   });
@@ -180,7 +183,7 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
           type="button"
           className="btn btn-quiet"
           disabled={pending}
-          onClick={() => router.push("/docket")}
+          onClick={() => router.push(`/applications/${entry.id}`)}
         >
           Cancel
         </button>

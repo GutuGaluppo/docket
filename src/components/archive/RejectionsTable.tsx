@@ -69,7 +69,7 @@ export function RejectionsTable({ rejections }: { rejections: readonly Rejection
               </td>
               <td data-label="Actions">
                 <span className="flex flex-wrap items-center gap-3">
-                  <Link href={`/docket/${rejection.id}/edit`} className="link-quiet">
+                  <Link href={`/applications/${rejection.id}/edit`} className="link-quiet">
                     Edit
                   </Link>
                   <ReopenButton

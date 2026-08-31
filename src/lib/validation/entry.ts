@@ -57,10 +57,18 @@ export const SORT_FIELDS = [
   "createdAt",
 ] as const;
 
+/**
+ * Which half of the register a listing is showing. "open" is the default
+ * everywhere: a list that keeps showing the companies that already said no is a
+ * list of disappointments, not a register of what is still in play.
+ */
+export const ENTRY_FILTERS = ["open", "rejected", "all"] as const;
+
 export const listQuerySchema = z.object({
   q: z.string().trim().max(120).optional().default(""),
   sort: z.enum(SORT_FIELDS).optional().default("createdAt"),
   dir: z.enum(["asc", "desc"]).optional().default("desc"),
+  filter: z.enum(ENTRY_FILTERS).optional().default("open"),
 });
 
 export type ListQuery = z.output<typeof listQuerySchema>;

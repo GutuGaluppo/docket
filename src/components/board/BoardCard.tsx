@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 
 import type { BoardCard as Card, Stage } from "@/server/db/queries/board";
 import { protocolNumber } from "@/lib/format";
 import { moveApplication } from "@/server/actions/board";
-import { DossierTrigger } from "@/components/docket/DossierTrigger";
 
 /**
  * A card carries two ways to move, and both matter.
@@ -58,8 +58,8 @@ export function BoardCard({
       className={`group flex cursor-grab flex-col gap-2.5 rounded-lg border bg-raised p-3.5 transition-all duration-200 active:cursor-grabbing ${
         pending ? "opacity-55" : ""
       } ${
-        dragging 
-          ? "rotate-[-2deg] scale-105 shadow-elevation-3 border-stamp" 
+        dragging
+          ? "rotate-[-2deg] scale-105 shadow-elevation-3 border-stamp"
           : "border-rule shadow-elevation-1 hover:shadow-elevation-2 hover:-translate-y-0.5"
       }`}
     >
@@ -70,7 +70,12 @@ export function BoardCard({
         {card.nextInterviewAt && (
           <span className="inline-flex items-center gap-1 rounded-full bg-stamp-wash px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-stamp uppercase border border-stamp-edge">
             <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
             </svg>
             {new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(
               card.nextInterviewAt,
@@ -79,27 +84,35 @@ export function BoardCard({
         )}
       </div>
 
-      {/* The card's face opens the dossier; the select below it and the drag
-          handler on the article are untouched, so the three ways to use a card
-          do not compete for the same gesture. */}
-      <DossierTrigger 
-        id={card.id} 
-        label={`${card.company} — ${card.position}`} 
-        className="w-full group/trigger"
+      {/* The card's face opens the entry's own page; the select below it and the
+          drag handler on the article are untouched, so the three ways to use a
+          card do not compete for the same gesture.
+
+          A link rather than the panel this used to open: the entry has a page
+          now, and the board is one of the two places a person is most likely to
+          want it — a card is where you notice that an interview is tomorrow and
+          you cannot remember what the advert asked for. */}
+      <Link
+        href={`/applications/${card.id}`}
+        aria-label={`Open the entry for ${card.company} — ${card.position}`}
+        className="group/trigger w-full no-underline"
+        // A drag that starts on a link would otherwise become the browser's own
+        // link-drag, and the card would never reach the column it was aimed at.
+        draggable={false}
       >
-        <span className="block text-sm font-semibold leading-tight group-hover/trigger:text-stamp transition-colors">
+        <span className="block text-sm leading-tight font-semibold transition-colors group-hover/trigger:text-stamp">
           {card.company}
         </span>
-        <span className="mt-1.5 block text-xs leading-tight text-muted group-hover/trigger:text-ink transition-colors">
+        <span className="mt-1.5 block text-xs leading-tight text-muted transition-colors group-hover/trigger:text-ink">
           {card.position}
         </span>
-      </DossierTrigger>
+      </Link>
 
       {card.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {card.tags.slice(0, 2).map((tag) => (
-            <span 
-              key={tag} 
+            <span
+              key={tag}
               className="rounded border border-stamp-edge bg-stamp-wash px-1.5 py-0.5 font-mono text-[10px] text-stamp"
             >
               {tag}

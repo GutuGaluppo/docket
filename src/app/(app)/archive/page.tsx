@@ -85,7 +85,7 @@ async function Filed({
         {filed.total === 0 ? (
           <>
             Nothing has been refused yet. When it happens, file it from the{" "}
-            <Link href="/docket" className="border-b border-stamp text-ink">
+            <Link href="/applications" className="border-b border-stamp text-ink">
               register
             </Link>{" "}
             or drop the card in the last column of the board, and it will be kept here.
@@ -158,7 +158,7 @@ export default async function ArchivePage({
             Search
           </button>
         </form>
-        <Link href="/docket" className="link-quiet">
+        <Link href="/applications" className="link-quiet">
           Back to the register
         </Link>
       </div>

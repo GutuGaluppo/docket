@@ -28,8 +28,8 @@ export default function ImportPage() {
           dropped.
         </p>
         <p className="mt-4">
-          <Link href="/docket" className="border-b border-stamp text-ink">
-            Back to your docket
+          <Link href="/applications" className="border-b border-stamp text-ink">
+            See your applications
           </Link>
         </p>
       </section>

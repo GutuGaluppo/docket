@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -32,6 +33,7 @@ type TextField = "company" | "website" | "position" | "jobDescription";
 type RegisterEvent = Parameters<UseFormRegisterReturn["onChange"]>[0];
 
 export function StampForm() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState("");
 
@@ -135,6 +137,15 @@ export function StampForm() {
         stack.setDismissed([]);
         stack.setManual([]);
         clearMarks();
+        /*
+          Straight to the entry that was just created.
+
+          A form that clears itself and says nothing leaves the person who filled
+          it in wondering whether anything was recorded. The sheet answers that
+          by being the record: the number the register assigned, the stamp, and
+          every field as it was stored — including the ones a pasted link wrote.
+        */
+        router.push(`/applications/${result.id}`);
       } else {
         setServerError(result.error);
       }
@@ -166,10 +177,8 @@ export function StampForm() {
       noValidate
       data-form-type="other"
       suppressHydrationWarning
-      className="mt-6 rounded-[3px] border border-rule bg-card p-6 shadow-paper"
+      className="panel panel-pad mt-6"
     >
-      <p className="eyebrow mb-4 text-muted">New entry</p>
-
       <DraftReview filled={marked} sources={sources} onAccept={clearMarks} />
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">

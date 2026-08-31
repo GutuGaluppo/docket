@@ -1,241 +1,283 @@
-import type { Metadata } from "next";
-import { Fragment, Suspense } from "react";
+import type { Metadata, Route } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { SectionHeader } from "@/components/SectionHeader";
-import { EntriesTable } from "@/components/docket/EntriesTable";
-import { DossierProvider } from "@/components/docket/EntryDossier";
-import { StampForm } from "@/components/docket/StampForm";
-import { Bar, FiguresSkeleton, Placeholder, TableSkeleton } from "@/components/Skeleton";
-import type { ExportFormat } from "@/lib/export/entries";
-import { listQuerySchema, type ListQuery } from "@/lib/validation/entry";
+import { SectionIcon, type IconName } from "@/components/shell/SectionIcon";
+import { CompanyLogo } from "@/components/docket/CompanyLogo";
+import { Stamp } from "@/components/docket/Stamp";
+import { Bar, Placeholder } from "@/components/Skeleton";
+import { elapsed, protocolNumber } from "@/lib/format";
 import {
   getEntryCounts,
   listEntries,
   type Entry,
   type EntryCounts,
 } from "@/server/db/queries/applications";
-import { requireScope } from "@/server/auth/session";
+import { getSession, requireScope } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Your docket" };
 
 /**
- * Three files, one register. The order is the order of intent: a PDF is read,
- * a workbook is worked in, and CSV is what you hand to software that has to
- * accept anything.
+ * The desk, not the register.
+ *
+ * Splitting the two was the point: this page answers "where does the search
+ * stand, and what should I do next", and the list of every company written to
+ * answers "what have I done". They were one screen, and the form for adding an
+ * entry sat on top of fifty rows nobody could see past.
+ *
+ * Nothing here is a new query. The counts and the newest few rows are the same
+ * two reads the register already made, so the split costs a route, not a round
+ * trip.
  */
-const EXPORT_LINKS: ReadonlyArray<{ format: ExportFormat; label: string; hint: string }> = [
-  { format: "pdf", label: "PDF", hint: "The table as a printable page" },
-  { format: "xlsx", label: "Excel", hint: "A workbook with typed columns, ready to open" },
-  { format: "csv", label: "CSV", hint: "Plain text, for anything else" },
+const SUGGESTIONS: ReadonlyArray<{
+  href: Route;
+  icon: IconName;
+  title: string;
+  note: string;
+}> = [
+  {
+    href: "/docket/new",
+    icon: "plus",
+    title: "Stamp an application",
+    note: "Paste the link and the fields fill themselves in. Takes under a minute.",
+  },
+  {
+    href: "/cv",
+    icon: "cv",
+    title: "Tailor your CV",
+    note: "Read one CV against one advert and see exactly what the role asks for.",
+  },
+  {
+    href: "/board",
+    icon: "board",
+    title: "Move the board along",
+    note: "Anything waiting on you is a column away from where it should be.",
+  },
+  {
+    href: "/analytics",
+    icon: "analytics",
+    title: "See where they go",
+    note: "Response rates by stack and country, and a map of every city you wrote to.",
+  },
 ];
 
 /**
- * The counters are the only part of the heading that waits. The title and the
- * line under it read the same whether or not the register has arrived, so they
- * are printed immediately and these three numbers stream in beside them.
+ * The greeting. It uses whatever name the provider gave, and quietly does
+ * without one otherwise — "Welcome back, null" is worse than no name at all.
  */
-async function Figures({ counts }: { counts: Promise<EntryCounts> }) {
-  const totals = await counts;
+async function Welcome({ counts }: { counts: Promise<EntryCounts> }) {
+  const [session, totals] = await Promise.all([getSession(), counts]);
+  const first = (session?.user?.name ?? "").trim().split(" ")[0];
 
   return (
-    <>
-      <div>
-        <b className="block text-2xl leading-none font-bold">
-          {String(totals.total).padStart(2, "0")}
-        </b>
-        <span className="text-[10px] tracking-[0.14em] text-muted uppercase">In total</span>
+    <div className="hero">
+      <span aria-hidden="true" className="hero-mark">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="h-7 w-7"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M4 6.5A2.5 2.5 0 0 1 6.5 4H17l3 3v12.5A1.5 1.5 0 0 1 18.5 21h-12A2.5 2.5 0 0 1 4 18.5Z"
+          />
+          <path strokeLinecap="round" d="M8 10h8M8 14h5" />
+        </svg>
+      </span>
+      <div className="hero-body">
+        <p className="hero-title">
+          {first ? `Welcome back, ${first}.` : "Welcome back."}{" "}
+          {totals.total === 0
+            ? "Your register is empty — the first stamp is the hard one."
+            : totals.open === 0
+              ? "Nothing is waiting on an answer right now."
+              : `${totals.open} application${totals.open === 1 ? " is" : "s are"} still waiting on an answer.`}
+        </p>
+        <p className="hero-note">
+          Every application gets a number and a stamp with the local date and time it was sent.
+          Nothing is ever deleted on your behalf — a refusal moves an entry to the archive, where it
+          keeps its number and reopens in one click.
+        </p>
       </div>
-      <div>
-        <b className="block text-2xl leading-none font-bold">
-          {String(totals.thisMonth).padStart(2, "0")}
-        </b>
-        <span className="text-[10px] tracking-[0.14em] text-muted uppercase">This month</span>
-      </div>
-      {/* The total counts everything ever stamped, so the gap between it and
-          the rows below has to be accounted for somewhere visible. */}
-      {totals.rejected > 0 && (
-        <Link href="/archive" className="no-underline">
-          <b className="block text-2xl leading-none font-bold">
-            {String(totals.rejected).padStart(2, "0")}
-          </b>
-          <span className="text-[10px] tracking-[0.14em] text-muted uppercase underline decoration-dotted underline-offset-4">
-            Filed
-          </span>
-        </Link>
-      )}
-    </>
+    </div>
   );
 }
 
-/**
- * Hidden on an empty register, which is a fact only the count knows — so the
- * links wait for it. They sit at the end of a row that is already on screen,
- * and appearing there moves nothing, which is why this fallback is empty
- * rather than a shape.
- */
-async function ExportLinks({ counts, search }: { counts: Promise<EntryCounts>; search: string }) {
-  const { total } = await counts;
-  if (total === 0) return null;
+async function Figures({ counts }: { counts: Promise<EntryCounts> }) {
+  const totals = await counts;
 
-  /**
-   * The search that is on screen is the search the file is taken through, so a
-   * filtered docket exports the rows the person is actually looking at.
-   */
-  const exportHref = (format: ExportFormat) => {
-    const params = new URLSearchParams({ format });
-    if (search) params.set("q", search);
-    return `/docket/export?${params.toString()}`;
-  };
+  const figures: ReadonlyArray<{ value: number; label: string; href?: Route }> = [
+    { value: totals.total, label: "In total", href: "/applications" },
+    { value: totals.open, label: "Awaiting an answer", href: "/applications" },
+    { value: totals.thisMonth, label: "This month" },
+    { value: totals.rejected, label: "Filed", href: "/archive" },
+  ];
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="eyebrow text-muted">{search ? "Export these results" : "Export"}</span>
-      {EXPORT_LINKS.map(({ format, label, hint }, index) => (
-        <Fragment key={format}>
-          {index > 0 && (
-            <span aria-hidden="true" className="text-faint">
-              ·
-            </span>
-          )}
-          <a className="link-quiet" href={exportHref(format)} title={hint} download>
-            {label}
-          </a>
-        </Fragment>
+    <section className="grid gap-3.5 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+      {figures.map((figure, index) => {
+        const body = (
+          <>
+            <b className="stat-value">{String(figure.value).padStart(2, "0")}</b>
+            <span className="stat-label">{figure.label}</span>
+          </>
+        );
+        const style = { "--rise-delay": `${index * 55}ms` } as React.CSSProperties;
+
+        return figure.href ? (
+          <Link key={figure.label} href={figure.href} className="stat lift rise" style={style}>
+            {body}
+          </Link>
+        ) : (
+          <div key={figure.label} className="stat rise" style={style}>
+            {body}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** How many of the newest entries the desk shows before handing over to the register. */
+const LATEST = 5;
+
+/** The last handful stamped, as a way back into the entries rather than a list. */
+async function Latest({ entries }: { entries: Promise<Entry[]> }) {
+  const all = await entries;
+  const rows = all.slice(0, LATEST);
+
+  if (rows.length === 0) {
+    return (
+      <div className="panel panel-pad text-center">
+        <p className="eyebrow mb-2.5 text-stamp">Blank register</p>
+        <p className="text-sm text-muted">
+          Nothing has been stamped yet.{" "}
+          <Link href="/docket/new" className="border-b border-stamp text-ink">
+            Record your first application
+          </Link>
+          , or{" "}
+          <Link href="/docket/import" className="border-b border-stamp text-ink">
+            import what you already have
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {rows.map((entry, index) => (
+        <Link
+          key={entry.id}
+          href={`/applications/${entry.id}`}
+          className="panel lift rise flex items-center gap-4 px-4 py-3.5 no-underline"
+          style={{ "--rise-delay": `${index * 45}ms` } as React.CSSProperties}
+        >
+          <span className="font-mono text-[11px] text-faint">
+            {protocolNumber(entry.protocolNumber)}
+          </span>
+          <CompanyLogo company={entry.company} website={entry.website} />
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-sm font-semibold">{entry.company}</b>
+            <span className="block truncate text-xs text-muted">{entry.position}</span>
+          </span>
+          <span className="hidden font-mono text-[11px] text-faint sm:block">
+            {elapsed(entry.createdAt)}
+          </span>
+          <span className="hidden md:block">
+            <Stamp at={entry.createdAt} timezone={entry.timezone} />
+          </span>
+        </Link>
       ))}
     </div>
   );
 }
 
-/** The rows themselves, and the three things it can mean to have none. */
-async function Register({
-  entries,
-  counts,
-  query,
-}: {
-  entries: Promise<Entry[]>;
-  counts: Promise<EntryCounts>;
-  query: ListQuery;
-}) {
-  const [rows, totals] = await Promise.all([entries, counts]);
-
-  if (rows.length > 0) {
-    return (
-      <DossierProvider>
-        <EntriesTable
-          entries={rows}
-          search={query.q}
-          sort={{ field: query.sort, direction: query.dir }}
-        />
-      </DossierProvider>
-    );
-  }
-
-  return (
-    <div className="rounded-[3px] border border-dashed border-rule bg-card px-6 py-12 text-center">
-      <p className="eyebrow mb-2.5 text-stamp">Blank register</p>
-      <p className="text-base text-muted">
-        {totals.total === 0 ? (
-          <>
-            Your docket is empty. Stamp your first application above, or{" "}
-            <Link href="/docket/import" className="border-b border-stamp text-ink">
-              import what you already have
-            </Link>
-            .
-          </>
-        ) : query.q ? (
-          "No open entry matches that search."
-        ) : (
-          <>
-            Nothing is waiting on an answer. Every entry is{" "}
-            <Link href="/archive" className="border-b border-stamp text-ink">
-              in the archive
-            </Link>
-            .
-          </>
-        )}
-      </p>
-    </div>
-  );
-}
-
-export default async function DocketPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const raw = await searchParams;
-  const query = listQuerySchema.parse({
-    q: typeof raw.q === "string" ? raw.q : undefined,
-    sort: typeof raw.sort === "string" ? raw.sort : undefined,
-    dir: typeof raw.dir === "string" ? raw.dir : undefined,
-  });
-
+export default function DocketPage() {
   /**
-   * Started here, awaited inside the boundaries below.
-   *
-   * Nothing on this page's own path touches the database, so the heading and —
-   * more to the point — the stamp form are on screen and usable while these are
-   * still in flight. Both start from the same session read, which is memoised
-   * per request, so two promises are still one round trip for the session and
-   * one query each.
+   * Started here, awaited inside the boundaries below. Nothing on this page's
+   * own path touches the database, so the heading and the suggestions are on
+   * screen while these are still in flight.
    */
   const counts = requireScope().then(getEntryCounts);
-  const entries = requireScope().then((scope) =>
-    listEntries(scope, { search: query.q, sort: query.sort, direction: query.dir }),
-  );
+  const entries = requireScope().then((scope) => listEntries(scope, { filter: "all" }));
 
   return (
     <>
-      <SectionHeader
-        section="docket"
-        aside={
-          <div className="flex gap-6 font-mono">
-            <Suspense fallback={<FiguresSkeleton label="the counters" />}>
-              <Figures counts={counts} />
-            </Suspense>
-          </div>
-        }
-      />
+      <SectionHeader section="docket" />
 
-      <StampForm />
-
-      <div className="my-8 mb-2.5 flex flex-wrap items-center justify-between gap-3">
-        <form
-          method="get"
-          action="/docket"
-          className="flex items-center gap-2"
-          suppressHydrationWarning
-        >
-          <input
-            type="search"
-            name="q"
-            defaultValue={query.q}
-            className="min-w-[240px] rounded-[2px] border border-rule bg-sheet px-3 py-2 font-mono text-[13px] focus:border-stamp focus:outline-none"
-            placeholder="Search company, position, stack or city"
-            aria-label="Search your docket"
-            suppressHydrationWarning
-          />
-          <input type="hidden" name="sort" value={query.sort} />
-          <input type="hidden" name="dir" value={query.dir} />
-          <button type="submit" className="link-quiet" suppressHydrationWarning>
-            Search
-          </button>
-        </form>
+      <div className="mt-7 flex flex-col gap-9">
         <Suspense
           fallback={
-            <Placeholder label="the export links">
-              <Bar className="h-4 w-40" />
+            <Placeholder label="the greeting">
+              <Bar className="h-24 w-full" />
             </Placeholder>
           }
         >
-          <ExportLinks counts={counts} search={query.q} />
+          <Welcome counts={counts} />
         </Suspense>
-      </div>
 
-      <Suspense fallback={<TableSkeleton label="the register" />}>
-        <Register entries={entries} counts={counts} query={query} />
-      </Suspense>
+        <Suspense
+          fallback={
+            <Placeholder
+              label="the counters"
+              className="grid gap-3.5 grid-cols-[repeat(auto-fit,minmax(160px,1fr))]"
+            >
+              <Bar className="h-21.5 w-full" />
+              <Bar className="h-21.5 w-full" />
+              <Bar className="h-21.5 w-full" />
+              <Bar className="h-21.5 w-full" />
+            </Placeholder>
+          }
+        >
+          <Figures counts={counts} />
+        </Suspense>
+
+        <section className="flex flex-col gap-3.5">
+          <h2 className="eyebrow text-muted">Suggested for you</h2>
+          <div className="suggest-grid">
+            {SUGGESTIONS.map((suggestion, index) => (
+              <Link
+                key={suggestion.href}
+                href={suggestion.href}
+                className="suggest-card lift rise"
+                style={{ "--rise-delay": `${index * 60}ms` } as React.CSSProperties}
+              >
+                <span aria-hidden="true" className="suggest-icon">
+                  <SectionIcon name={suggestion.icon} />
+                </span>
+                <span className="suggest-title">{suggestion.title}</span>
+                <span className="suggest-note">{suggestion.note}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3.5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="eyebrow text-muted">Latest entries</h2>
+            <Link href="/applications" className="link-quiet">
+              See all applications
+            </Link>
+          </div>
+          <Suspense
+            fallback={
+              <Placeholder label="the latest entries" className="flex flex-col gap-2.5">
+                <Bar className="h-14 w-full" />
+                <Bar className="h-14 w-full" />
+                <Bar className="h-14 w-full" />
+              </Placeholder>
+            }
+          >
+            <Latest entries={entries} />
+          </Suspense>
+        </section>
+      </div>
     </>
   );
 }

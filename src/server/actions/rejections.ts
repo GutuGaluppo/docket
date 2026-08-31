@@ -28,6 +28,7 @@ const isFailure = (value: Scope | RejectionActionResult): value is RejectionActi
  */
 function revalidateEverywhere() {
   revalidatePath("/docket");
+  revalidatePath("/applications");
   revalidatePath("/board");
   revalidatePath("/archive");
   revalidatePath("/analytics");

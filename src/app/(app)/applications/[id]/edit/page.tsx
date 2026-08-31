@@ -4,8 +4,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EditEntryForm } from "@/components/docket/EditEntryForm";
+import { CompanyLogo } from "@/components/docket/CompanyLogo";
+import { PageTitleBeacon } from "@/components/shell/PageTitle";
 import { Stamp } from "@/components/docket/Stamp";
 import { EntrySheetSkeleton } from "@/components/Skeleton";
+import { protocolNumber } from "@/lib/format";
 import { requireScope } from "@/server/auth/session";
 import { getEntry } from "@/server/db/queries/applications";
 
@@ -27,16 +30,19 @@ async function Sheet({ id }: { id: string }) {
 
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-5">
-        <div>
-          <p className="eyebrow mb-2 text-stamp">
-            Nº {String(entry.protocolNumber).padStart(3, "0")}
-          </p>
-          <h1 className="text-3xl font-bold tracking-[-0.02em]">{entry.company}</h1>
-          <p className="mt-1 text-muted">{entry.position}</p>
+      <PageTitleBeacon title={`Correcting ${entry.company}`} />
+
+      <header className="sheet-head mt-5">
+        <div className="sheet-identity">
+          <CompanyLogo company={entry.company} website={entry.website} />
+          <div className="min-w-0">
+            <p className="eyebrow text-stamp">Nº {protocolNumber(entry.protocolNumber)}</p>
+            <h1 className="sheet-company">{entry.company}</h1>
+            <p className="sheet-position">{entry.position}</p>
+          </div>
         </div>
         <Stamp at={entry.createdAt} timezone={entry.timezone} />
-      </div>
+      </header>
 
       <EditEntryForm entry={entry} />
     </>
@@ -47,14 +53,14 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
 
   return (
-    <main className="mx-auto max-w-[900px] px-5 py-10">
-      <Link href="/docket" className="eyebrow text-muted hover:text-stamp">
-        ← Back to the docket
+    <>
+      <Link href={`/applications/${id}`} className="eyebrow text-muted hover:text-stamp">
+        ← Back to the entry
       </Link>
 
       <Suspense fallback={<EntrySheetSkeleton />}>
         <Sheet id={id} />
       </Suspense>
-    </main>
+    </>
   );
 }

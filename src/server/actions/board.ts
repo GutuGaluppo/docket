@@ -46,6 +46,7 @@ export async function moveApplication(input: unknown): Promise<BoardResult> {
 
   revalidatePath("/board");
   revalidatePath("/docket");
+  revalidatePath("/applications");
   if (!result.filed) return { ok: true };
 
   // The card is about to disappear from under the cursor that dropped it, so

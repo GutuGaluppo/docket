@@ -2,32 +2,30 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  createEntry,
-  deleteEntry,
-  getEntryDossier,
-  updateEntry,
-  type EntryDossier,
-} from "@/server/db/queries/applications";
+import { createEntry, deleteEntry, updateEntry } from "@/server/db/queries/applications";
 import { requireScope, UnauthenticatedError } from "@/server/auth/session";
 import { captureForUser } from "@/server/analytics/capture";
 import { EVENTS } from "@/lib/analytics/events";
-import {
-  deleteEntrySchema,
-  editEntrySchema,
-  entryIdSchema,
-  entryInputSchema,
-} from "@/lib/validation/entry";
+import { deleteEntrySchema, editEntrySchema, entryInputSchema } from "@/lib/validation/entry";
 
 export type ActionResult =
   { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+
+/**
+ * Stamping is the one action whose result the caller needs more than a verdict
+ * from: the form that called it navigates to the entry it just created, and it
+ * cannot know the id any other way.
+ */
+export type StampResult =
+  | { ok: true; id: string; protocolNumber: number }
+  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 
 /**
  * Order matters and is the same in every action: session first, then Zod, then
  * the query. A server action is reachable by anyone who can craft a POST — the
  * client-side resolver is a convenience, never the check.
  */
-export async function stampApplication(input: unknown): Promise<ActionResult> {
+export async function stampApplication(input: unknown): Promise<StampResult> {
   let scope;
   try {
     scope = await requireScope();
@@ -67,7 +65,8 @@ export async function stampApplication(input: unknown): Promise<ActionResult> {
   }
 
   revalidatePath("/docket");
-  return { ok: true };
+  revalidatePath("/applications");
+  return { ok: true, id: created.id, protocolNumber: created.protocolNumber };
 }
 
 export async function editEntry(input: unknown): Promise<ActionResult> {
@@ -107,6 +106,7 @@ export async function editEntry(input: unknown): Promise<ActionResult> {
   if (!updated) return { ok: false, error: "Entry not found." };
 
   revalidatePath("/docket");
+  revalidatePath("/applications");
   revalidatePath("/board");
   return { ok: true };
 }
@@ -131,39 +131,8 @@ export async function removeEntry(input: unknown): Promise<ActionResult> {
   // The row could have been read from any of the three: the register, the board
   // or the archive. Removal is the one act that reaches all of them.
   revalidatePath("/docket");
+  revalidatePath("/applications");
   revalidatePath("/board");
   revalidatePath("/archive");
   return { ok: true };
-}
-
-export type DossierResult = { ok: true; entry: EntryDossier } | { ok: false; error: string };
-
-/**
- * Hands back one entry in full, for the panel that opens over a card.
- *
- * A read, not a write, and an action rather than a page because of what it is
- * carrying: the stored job advert, which the listings deliberately leave out.
- * Fetching it when the card is opened is what keeps a board of forty cards
- * from shipping forty job adverts to a browser that was only going to read one.
- *
- * The session check comes first here for the same reason it does in every
- * other action — this is a public endpoint, whoever calls it.
- */
-export async function readEntryDossier(input: unknown): Promise<DossierResult> {
-  let scope;
-  try {
-    scope = await requireScope();
-  } catch (error) {
-    if (error instanceof UnauthenticatedError) return { ok: false, error: "Sign in first." };
-    throw error;
-  }
-
-  const parsed = entryIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Unknown entry." };
-
-  const entry = await getEntryDossier(scope, parsed.data.id);
-  // Same answer for a row that is gone and a row that is somebody else's.
-  if (!entry) return { ok: false, error: "Entry not found." };
-
-  return { ok: true, entry };
 }

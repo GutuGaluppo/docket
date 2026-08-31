@@ -2,9 +2,9 @@ import { Fragment } from "react";
 import Link from "next/link";
 
 import type { Entry, SortDirection, SortField } from "@/server/db/queries/applications";
+import type { ListQuery } from "@/lib/validation/entry";
 import { elapsed, protocolNumber } from "@/lib/format";
 import { CompanyLogo } from "./CompanyLogo";
-import { DossierTrigger } from "./DossierTrigger";
 import { DeleteEntryButton } from "./DeleteEntryButton";
 import { RejectionButton } from "./RejectionButton";
 import { StackCell } from "./StackCell";
@@ -22,26 +22,31 @@ const COLUMNS: Array<{ field: SortField; label: string }> = [
 ];
 
 /** Sorting is a link, not a handler: the register still sorts with JS turned off. */
-function sortHref(search: string, current: Sort, field: SortField) {
+function sortHref(query: ListQuery, field: SortField) {
   return {
-    pathname: "/docket",
+    pathname: "/applications",
     query: {
-      ...(search ? { q: search } : {}),
+      ...(query.q ? { q: query.q } : {}),
+      ...(query.filter !== "open" ? { filter: query.filter } : {}),
       sort: field,
-      dir: current.field === field && current.direction === "asc" ? "desc" : "asc",
+      dir: query.sort === field && query.dir === "asc" ? "desc" : "asc",
     },
   };
 }
 
-export function EntriesTable({
-  entries,
-  search,
-  sort,
-}: {
-  entries: readonly Entry[];
-  search: string;
-  sort: Sort;
-}) {
+/**
+ * The register, as a table of entries rather than a spreadsheet of cells.
+ *
+ * Two things changed about how a row is read. The company name is a link to the
+ * entry's own page instead of a button that opened a panel over the list — the
+ * entry has somewhere to live now, and a page can be linked to, opened in a
+ * tab, and come back to. And the three things anyone actually does to a row —
+ * correct it, file it, remove it — are buttons rather than three greys of the
+ * same faint word.
+ */
+export function EntriesTable({ entries, query }: { entries: readonly Entry[]; query: ListQuery }) {
+  const sort: Sort = { field: query.sort, direction: query.dir };
+
   return (
     <div className="overflow-hidden rounded-xl border border-rule bg-card shadow-elevation-1">
       <table className="docket-table">
@@ -59,7 +64,7 @@ export function EntriesTable({
                 }
               >
                 <Link
-                  href={sortHref(search, sort, column.field)}
+                  href={sortHref(query, column.field)}
                   className="transition-colors hover:text-stamp"
                 >
                   {column.label}{" "}
@@ -94,13 +99,13 @@ export function EntriesTable({
                   <td className="font-semibold" data-label="Company">
                     <span className="flex items-center gap-3">
                       <CompanyLogo company={entry.company} website={entry.website} />
-                      <DossierTrigger
-                        id={entry.id}
-                        label={label}
+                      <Link
+                        href={`/applications/${entry.id}`}
+                        aria-label={`Open the entry for ${label}`}
                         className="font-semibold underline decoration-dotted underline-offset-4 transition-colors hover:text-stamp"
                       >
                         {entry.company}
-                      </DossierTrigger>
+                      </Link>
                     </span>
                   </td>
                   <td className="text-sm text-muted" data-label="Position">
@@ -128,7 +133,7 @@ export function EntriesTable({
                   <td data-label="Actions">
                     <div className="row-actions">
                       <Link
-                        href={`/docket/${entry.id}/edit`}
+                        href={`/applications/${entry.id}/edit`}
                         className="row-action"
                         aria-label={`Correct ${label}`}
                       >

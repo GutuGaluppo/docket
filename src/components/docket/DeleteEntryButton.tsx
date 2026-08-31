@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+
 import { removeEntry } from "@/server/actions/entries";
 
 /**
@@ -12,7 +15,21 @@ import { removeEntry } from "@/server/actions/entries";
  * palette next to two other faint greys, which made the three things a person
  * most often wants to do the three hardest things to find.
  */
-export function DeleteEntryButton({ id, label }: { id: string; label: string }) {
+export function DeleteEntryButton({
+  id,
+  label,
+  /**
+   * Where to go once the row is gone. A listing needs nothing — the row simply
+   * stops being there. The entry's own page has to leave, because the thing it
+   * was showing no longer exists.
+   */
+  redirectTo,
+}: {
+  id: string;
+  label: string;
+  redirectTo?: Route;
+}) {
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,7 +51,8 @@ export function DeleteEntryButton({ id, label }: { id: string; label: string }) 
     if (timer.current) clearTimeout(timer.current);
     setConfirming(false);
     startTransition(async () => {
-      await removeEntry({ id });
+      const result = await removeEntry({ id });
+      if (result.ok && redirectTo) router.replace(redirectTo);
     });
   }
 
