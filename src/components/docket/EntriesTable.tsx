@@ -7,6 +7,7 @@ import { CompanyLogo } from "./CompanyLogo";
 import { DossierTrigger } from "./DossierTrigger";
 import { DeleteEntryButton } from "./DeleteEntryButton";
 import { RejectionButton } from "./RejectionButton";
+import { StackCell } from "./StackCell";
 import { Stamp } from "./Stamp";
 
 type Sort = { field: SortField; direction: SortDirection };
@@ -42,9 +43,9 @@ export function EntriesTable({
   sort: Sort;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-rule shadow-elevation-1">
+    <div className="overflow-hidden rounded-xl border border-rule bg-card shadow-elevation-1">
       <table className="docket-table">
-        <thead className="sticky top-0 z-10 backdrop-blur-md" style={{ backgroundColor: 'var(--surface)' }}>
+        <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-md">
           <tr>
             {COLUMNS.map((column) => (
               <th
@@ -57,7 +58,10 @@ export function EntriesTable({
                     : "none"
                 }
               >
-                <Link href={sortHref(search, sort, column.field)} className="hover:text-stamp transition-colors">
+                <Link
+                  href={sortHref(search, sort, column.field)}
+                  className="transition-colors hover:text-stamp"
+                >
                   {column.label}{" "}
                   {sort.field === column.field ? (
                     <span className="text-stamp">{sort.direction === "asc" ? "↑" : "↓"}</span>
@@ -73,28 +77,17 @@ export function EntriesTable({
           </tr>
         </thead>
         <tbody>
-          {entries.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="py-16 text-center">
-                <p className="mb-2 font-mono text-sm uppercase tracking-wide text-muted">
-                  {search ? "No entries match your search" : "Your docket is empty"}
-                </p>
-                {!search && (
-                  <p className="text-sm text-faint">
-                    <Link href="/docket" className="border-b border-stamp text-stamp">
-                      Stamp your first application
-                    </Link>{" "}
-                    to get started
-                  </p>
-                )}
-              </td>
-            </tr>
-          ) : (
-            entries.map((entry) => (
+          {entries.map((entry, index) => {
+            const label = `${entry.company} — ${entry.position}`;
+
+            return (
               <Fragment key={entry.id}>
-                <tr className={`group ${entry.notes ? "docket-row-with-note" : ""}`}>
+                <tr
+                  className={`group rise ${entry.notes ? "docket-row-with-note" : ""}`}
+                  style={{ "--rise-delay": `${Math.min(index, 12) * 28}ms` } as React.CSSProperties}
+                >
                   <td className="docket-cell-number" data-label="Nº">
-                    <span className="opacity-60 group-hover:opacity-100 transition-opacity">
+                    <span className="opacity-60 transition-opacity group-hover:opacity-100">
                       {protocolNumber(entry.protocolNumber)}
                     </span>
                   </td>
@@ -103,34 +96,18 @@ export function EntriesTable({
                       <CompanyLogo company={entry.company} website={entry.website} />
                       <DossierTrigger
                         id={entry.id}
-                        label={`${entry.company} — ${entry.position}`}
-                        className="font-semibold underline decoration-dotted underline-offset-4 hover:text-stamp transition-colors"
+                        label={label}
+                        className="font-semibold underline decoration-dotted underline-offset-4 transition-colors hover:text-stamp"
                       >
                         {entry.company}
                       </DossierTrigger>
                     </span>
                   </td>
                   <td className="text-sm text-muted" data-label="Position">
-                    <span className="group-hover:text-ink transition-colors">
-                      {entry.position}
-                    </span>
+                    <span className="transition-colors group-hover:text-ink">{entry.position}</span>
                   </td>
                   <td data-label="Stack">
-                    <div className="flex max-w-[260px] flex-wrap gap-1.5">
-                      {entry.tags.slice(0, 3).map((tag) => (
-                        <span 
-                          key={tag} 
-                          className="rounded border border-stamp-edge bg-stamp-wash px-2 py-0.5 font-mono text-[11px] text-stamp"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {entry.tags.length > 3 && (
-                        <span className="rounded border border-rule bg-card px-2 py-0.5 font-mono text-[11px] text-faint">
-                          +{entry.tags.length - 3}
-                        </span>
-                      )}
-                    </div>
+                    <StackCell tags={entry.tags} label={label} />
                   </td>
                   <td className="text-sm text-muted" data-label="City / country">
                     {entry.city ? (
@@ -149,16 +126,18 @@ export function EntriesTable({
                     </span>
                   </td>
                   <td data-label="Actions">
-                    <span className="flex flex-wrap items-start gap-2.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <Link 
-                        href={`/docket/${entry.id}/edit`} 
-                        className="rounded px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-stamp hover:bg-stamp-wash transition-colors"
+                    <div className="row-actions">
+                      <Link
+                        href={`/docket/${entry.id}/edit`}
+                        className="row-action"
+                        aria-label={`Correct ${label}`}
                       >
+                        <PencilGlyph />
                         Edit
                       </Link>
-                      <RejectionButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
-                      <DeleteEntryButton id={entry.id} label={`${entry.company} — ${entry.position}`} />
-                    </span>
+                      <RejectionButton id={entry.id} label={label} />
+                      <DeleteEntryButton id={entry.id} label={label} />
+                    </div>
                   </td>
                 </tr>
                 {entry.notes && (
@@ -170,10 +149,27 @@ export function EntriesTable({
                   </tr>
                 )}
               </Fragment>
-            ))
-          )}
+            );
+          })}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function PencilGlyph() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-3.5 w-3.5"
+    >
+      <path d="M11.2 2.3 13.7 4.8 5.6 12.9l-3.1.6.6-3.1z" />
+    </svg>
   );
 }
