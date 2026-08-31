@@ -30,7 +30,7 @@ export function RedesignBanner() {
             <h3 className="font-semibold text-ink">New UI Active — 2026 Redesign</h3>
           </div>
           <p className="text-sm text-muted">
-            You're viewing the modernized interface with improved keyboard navigation.{" "}
+            You&apos;re viewing the modernized interface with improved keyboard navigation.{" "}
             <strong>Press ⌘K</strong> to open the command palette, or{" "}
             <strong>press ?</strong> for all shortcuts.
           </p>

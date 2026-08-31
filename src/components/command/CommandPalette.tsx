@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { SectionIcon } from "@/components/shell/SectionIcon";
+import { SectionIcon, type IconName } from "@/components/shell/SectionIcon";
 
 interface Command {
   id: string;
   label: string;
-  icon?: string;
+  icon?: IconName;
   shortcut?: string;
   action: () => void;
   group: string;
@@ -321,10 +321,7 @@ export function CommandPalette() {
                           onMouseEnter={() => setSelectedIndex(currentIndex)}
                         >
                           {command.icon && (
-                            <SectionIcon
-                              name={command.icon as any}
-                              className="h-4 w-4"
-                            />
+                            <SectionIcon name={command.icon} className="h-4 w-4" />
                           )}
                           <span className="flex-1 text-sm">{command.label}</span>
                           {command.shortcut && (
