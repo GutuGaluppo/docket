@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { PageTitleBeacon } from "@/components/shell/PageTitle";
+
 /**
  * The heading every gated section opens with, and the one place its words live.
  *
@@ -11,15 +13,39 @@ import type { ReactNode } from "react";
  * `aside` is whatever sits at the right-hand end: counters on the register and
  * the archive, the month nav on the calendar, nothing at all on settings. The
  * page passes the real one; the loading file passes its placeholder.
+ *
+ * The heading also hands its title to the bar above the page, which picks it up
+ * as the heading scrolls out of sight. Both halves of that transition are
+ * declared here so a section cannot end up with a title in one place and not
+ * the other.
  */
 export type SectionKey =
-  "docket" | "board" | "calendar" | "archive" | "analytics" | "cv" | "import" | "settings";
+  | "docket"
+  | "applications"
+  | "new"
+  | "board"
+  | "calendar"
+  | "archive"
+  | "analytics"
+  | "cv"
+  | "import"
+  | "settings";
 
 export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede?: string }> = {
   docket: {
     eyebrow: "Personal register · kept by you",
     title: "Your docket",
-    lede: "Every application gets a number and a stamp with the local date and time it was sent. The ones that ended in a refusal are kept in the archive.",
+    lede: "Where the search stands today, and the one thing worth doing next. Every application gets a number and a stamp with the local date and time it was sent.",
+  },
+  applications: {
+    eyebrow: "Companies you have written to",
+    title: "Applications",
+    lede: "The full register, newest first. Every row opens onto the entry itself, and the ones that ended in a refusal are kept in the archive rather than deleted.",
+  },
+  new: {
+    eyebrow: "Stamp an application",
+    title: "New entry",
+    lede: "Paste the link and the fields fill themselves in — everything a link wrote is highlighted until you have read it. The date and time are recorded for you.",
   },
   board: {
     eyebrow: "Proceedings",
@@ -44,7 +70,7 @@ export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede
   cv: {
     eyebrow: "Preparation",
     title: "CV",
-    lede: "One CV, read against one advert. The comparison names what the role asks for, what your CV already evidences and where the gaps are — then proposes changes you apply one at a time. Nothing is rewritten without you, and nothing you have not done is ever written in.",
+    lede: "One CV, read against one advert. Nothing is rewritten without you, and nothing you have not done is ever written in.",
   },
   import: {
     eyebrow: "Transfer of records",
@@ -57,17 +83,29 @@ export const SECTIONS: Record<SectionKey, { eyebrow: string; title: string; lede
   },
 };
 
-export function SectionHeader({ section, aside }: { section: SectionKey; aside?: ReactNode }) {
+export function SectionHeader({
+  section,
+  aside,
+  /** Sits under the title, in place of the section's own explanatory line. */
+  children,
+}: {
+  section: SectionKey;
+  aside?: ReactNode;
+  children?: ReactNode;
+}) {
   const { eyebrow, title, lede } = SECTIONS[section];
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-ink pb-4">
-      <div>
-        <p className="eyebrow mb-1.5 text-stamp">{eyebrow}</p>
-        <h1 className="text-[clamp(var(--text-2xl),5vw,var(--text-5xl))] leading-none font-bold tracking-[-0.025em]">
-          {title}
-        </h1>
-        {lede && <p className="mt-2 max-w-[52ch] text-sm text-muted">{lede}</p>}
+    <header className="page-head">
+      <PageTitleBeacon title={title} />
+      <div className="min-w-0">
+        <p className="eyebrow page-eyebrow">{eyebrow}</p>
+        <h1 className="page-title">{title}</h1>
+        {(children ?? lede) && (
+          <div className="page-lede">
+            <div>{children ?? lede}</div>
+          </div>
+        )}
       </div>
       {aside}
     </header>
