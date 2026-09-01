@@ -1,0 +1,39 @@
+company,website,position,city,country,tags,notes,createdAt
+Loudly,loudly.com,Senior Frontend Developer,Berlin,Germany,React;TypeScript;Next.js;GraphQL;Tailwind CSS,Referred by Pedro. Range 75-85k.,2026-03-04T09:30:00.000Z
+Delivery Hero,deliveryhero.com,Staff Engineer,Berlin,Germany,TypeScript;Node.js;Kubernetes;PostgreSQL;Kafka;Terraform,,2026-03-11T14:05:00.000Z
+Personio,personio.com,Senior Fullstack Engineer,Munich,Germany,React;TypeScript;Java;PostgreSQL,Take-home was a scheduling widget.,2026-03-19T08:45:00.000Z
+Adjust,adjust.com,Backend Engineer,Berlin,Germany,Go;PostgreSQL;Redis;gRPC,,2026-03-26T16:20:00.000Z
+Booking.com,booking.com,Senior Software Engineer,Amsterdam,Netherlands,Java;Kotlin;Kubernetes;Kafka;Elasticsearch,Two-stage technical loop.,2026-04-02T10:15:00.000Z
+Adyen,adyen.com,Frontend Engineer,Amsterdam,Netherlands,React;TypeScript;Node.js,,2026-04-09T11:40:00.000Z
+Mollie,mollie.com,Fullstack Developer,Amsterdam,Netherlands,Vue.js;PHP;MySQL,,2026-04-15T09:05:00.000Z
+Feedzai,feedzai.com,Senior Frontend Engineer,Lisbon,Portugal,React;TypeScript;Redux;Jest,Recruiter reached out on LinkedIn.,2026-04-21T13:30:00.000Z
+Talkdesk,talkdesk.com,Software Engineer,Lisbon,Portugal,React;Python;AWS;Docker,,2026-04-28T15:10:00.000Z
+Farfetch,farfetch.com,Senior Engineer,Porto,Portugal,C#;.NET;Azure;React,,2026-05-06T08:50:00.000Z
+Critical Techworks,criticaltechworks.com,Frontend Developer,Porto,Portugal,Angular;TypeScript;RxJS,BMW joint venture. Hybrid 2 days.,2026-05-13T10:25:00.000Z
+Typeform,typeform.com,Senior Product Engineer,Barcelona,Spain,React;TypeScript;Node.js;GraphQL,,2026-05-20T14:45:00.000Z
+Glovo,glovoapp.com,Backend Engineer,Barcelona,Spain,Kotlin;Java;PostgreSQL;Kafka,,2026-05-27T09:15:00.000Z
+Cabify,cabify.com,Fullstack Engineer,Madrid,Spain,Elixir;React;PostgreSQL,,2026-06-03T11:00:00.000Z
+Monzo,monzo.com,Senior Frontend Engineer,London,United Kingdom,React;TypeScript;GraphQL;Next.js,Salary band published up front.,2026-06-10T16:35:00.000Z
+Revolut,revolut.com,Software Engineer,London,United Kingdom,Kotlin;Java;PostgreSQL;Kubernetes;Kafka;Redis,,2026-06-17T08:20:00.000Z
+Wise,wise.com,Staff Frontend Engineer,London,United Kingdom,React;TypeScript;Node.js;AWS,,2026-06-24T13:55:00.000Z
+Intercom,intercom.com,Senior Engineer,Dublin,Ireland,Ruby;Rails;React;PostgreSQL,,2026-07-01T10:40:00.000Z
+Stripe,stripe.com,Frontend Engineer,Dublin,Ireland,React;TypeScript;Ruby;GraphQL,Longest process so far.,2026-07-08T09:30:00.000Z
+Datadog,datadoghq.com,Software Engineer,Paris,France,Go;Python;Kubernetes;Terraform,,2026-07-15T15:20:00.000Z
+Alan,alan.com,Product Engineer,Paris,France,React;TypeScript;Python;PostgreSQL,,2026-07-22T11:10:00.000Z
+Proton,proton.me,Senior Frontend Developer,Zurich,Switzerland,React;TypeScript;Rust;WebAssembly,Privacy-first stack. Interesting brief.,2026-07-29T14:00:00.000Z
+Spotify,spotify.com,Senior Engineer,Stockholm,Sweden,Java;Scala;React;GCP;Kubernetes,,2026-08-05T09:45:00.000Z
+Klarna,klarna.com,Fullstack Engineer,Stockholm,Sweden,TypeScript;Node.js;React;AWS,,2026-08-12T13:15:00.000Z
+Zettle,zettle.com,Frontend Engineer,Stockholm,Sweden,React;TypeScript;GraphQL,,2026-08-18T10:05:00.000Z
+Unity,unity.com,Software Engineer,Copenhagen,Denmark,C#;C++;Python,,2026-08-21T16:10:00.000Z
+Pleo,pleo.io,Senior Frontend Engineer,Copenhagen,Denmark,React;TypeScript;Node.js;GraphQL;Cypress,,2026-08-25T09:20:00.000Z
+Brainly,brainly.com,Frontend Engineer,Kraków,Poland,React;TypeScript;Next.js,,2026-08-26T11:50:00.000Z
+Productboard,productboard.com,Senior Engineer,Prague,Czechia,React;TypeScript;Ruby;PostgreSQL,,2026-08-27T14:30:00.000Z
+Bitpanda,bitpanda.com,Backend Engineer,Vienna,Austria,Node.js;TypeScript;PostgreSQL;Redis,,2026-08-28T08:40:00.000Z
+Satispay,satispay.com,Fullstack Developer,Milan,Italy,Scala;React;PostgreSQL,,2026-08-28T15:05:00.000Z
+Shopify,shopify.com,Senior Frontend Developer,Toronto,Canada,React;TypeScript;Ruby;GraphQL,Fully remote within Canada.,2026-08-29T10:15:00.000Z
+Vercel,vercel.com,Senior Software Engineer,San Francisco,United States,Next.js;React;TypeScript;Rust;Turbopack,,2026-08-29T17:25:00.000Z
+Linear,linear.app,Product Engineer,New York,United States,React;TypeScript;GraphQL;Electron,,2026-08-30T09:00:00.000Z
+Nubank,nubank.com.br,Senior Engineer,São Paulo,Brazil,Clojure;Kotlin;Kafka;PostgreSQL,,2026-08-30T13:45:00.000Z
+Hotmart,hotmart.com,Frontend Engineer,Belo Horizonte,Brazil,React;TypeScript;Node.js,,2026-08-31T08:30:00.000Z
+Automattic,automattic.com,Senior Frontend Engineer,Remote — Global,Remote,React;TypeScript;PHP;WordPress,Distributed company. No office anywhere.,2026-08-31T12:00:00.000Z
+GitLab,gitlab.com,Fullstack Engineer,Remote — Europe,Remote,Vue.js;Ruby;Rails;PostgreSQL;Go,All-remote. Handbook-first.,2026-08-31T16:20:00.000Z
