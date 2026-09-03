@@ -62,7 +62,12 @@ export function RejectionsTable({ rejections }: { rejections: readonly Rejection
                 {howFarItGot(rejection.interviewCount)}
               </td>
               <td data-label="Filed">
-                <Stamp at={rejection.rejectedAt} timezone={rejection.timezone} />
+                <Stamp
+                  at={rejection.rejectedAt}
+                  timezone={rejection.timezone}
+                  status={rejection.rejectedAtStage}
+                  size={104}
+                />
                 <span className="mt-2 block font-mono text-[11px] text-muted">
                   {answerDelay(rejection.createdAt, rejection.rejectedAt)}
                 </span>

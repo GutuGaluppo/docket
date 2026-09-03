@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
+import { StampDefs } from "@/components/docket/Stamp";
 import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 import { archivo, jetbrainsMono } from "@/lib/fonts";
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         mismatch inside a component still reports.
       */}
       <body suppressHydrationWarning className="min-h-screen bg-paper text-ink antialiased">
+        <StampDefs />
         {children}
       </body>
     </html>

@@ -190,7 +190,7 @@ async function Latest({ entries }: { entries: Promise<Entry[]> }) {
             {elapsed(entry.createdAt)}
           </span>
           <span className="hidden md:block">
-            <Stamp at={entry.createdAt} timezone={entry.timezone} />
+            <Stamp at={entry.createdAt} timezone={entry.timezone} status={entry.stage} size={104} />
           </span>
         </Link>
       ))}

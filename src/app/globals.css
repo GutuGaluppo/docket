@@ -354,32 +354,17 @@
     text-transform: uppercase;
   }
 
-  /* The signature element: the violet double-outlined stamp. */
+  /* The ink the stamp is pressed in. Never quite full strength: a rubber stamp
+     leaves less pigment than a pen, and at full opacity the circle outshouts
+     the company name it sits beside. */
   .stamp {
     display: inline-block;
-    border: 2px solid var(--accent);
-    border-radius: 3px;
-    padding: 5px 10px 4px;
+    flex: none;
     color: var(--accent);
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-    box-shadow: inset 0 0 0 1px var(--accent);
     opacity: 0.92;
   }
-  .stamp-date {
+  .stamp svg {
     display: block;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-  .stamp-time {
-    display: block;
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    border-top: 1px solid var(--accent);
-    margin-top: 3px;
-    padding-top: 3px;
   }
 
   /* A field is one label plus one control. Grid cells stretch to the tallest

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { HeroDetector } from "@/components/marketing/HeroDetector";
 import { Reveal } from "@/components/marketing/Reveal";
 import { StepArt, type Step } from "@/components/marketing/StepArt";
+import { Stamp } from "@/components/docket/Stamp";
 import { Track } from "@/components/analytics/Track";
 import { EVENTS } from "@/lib/analytics/events";
 import { priceFor } from "@/lib/pricing";
@@ -167,10 +168,12 @@ export default async function LandingPage() {
                 ))}
               </div>
             </div>
-            <span className="stamp">
-              <span className="stamp-date">16/08/2026</span>
-              <span className="stamp-time">23:41</span>
-            </span>
+            <Stamp
+              at={new Date("2026-08-16T23:41:00Z")}
+              timezone="UTC"
+              status="Interviewing"
+              size={104}
+            />
           </div>
         </div>
 

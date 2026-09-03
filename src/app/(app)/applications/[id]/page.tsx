@@ -72,7 +72,7 @@ async function Sheet({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <Stamp at={entry.createdAt} timezone={entry.timezone} />
+          <Stamp at={entry.createdAt} timezone={entry.timezone} status={entry.stage} size={172} />
           <span className="font-mono text-[11px] text-faint">{elapsed(entry.createdAt)}</span>
         </div>
       </header>

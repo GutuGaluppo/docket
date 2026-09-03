@@ -125,7 +125,12 @@ export function EntriesTable({ entries, query }: { entries: readonly Entry[]; qu
                     )}
                   </td>
                   <td data-label="Stamped">
-                    <Stamp at={entry.createdAt} timezone={entry.timezone} />
+                    <Stamp
+                      at={entry.createdAt}
+                      timezone={entry.timezone}
+                      status={entry.stage}
+                      size={104}
+                    />
                     <span className="mt-1.5 block font-mono text-[10px] text-faint">
                       {elapsed(entry.createdAt)}
                     </span>

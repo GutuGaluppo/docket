@@ -41,7 +41,7 @@ async function Sheet({ id }: { id: string }) {
             <p className="sheet-position">{entry.position}</p>
           </div>
         </div>
-        <Stamp at={entry.createdAt} timezone={entry.timezone} />
+        <Stamp at={entry.createdAt} timezone={entry.timezone} status={entry.stage} size={172} />
       </header>
 
       <EditEntryForm entry={entry} />
