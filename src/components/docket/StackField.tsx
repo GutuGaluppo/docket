@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { FreeTextCaution } from "@/components/FreeTextCaution";
 import { detectStack, resolveTags } from "@/lib/stack-detector";
+import { seedEdits } from "@/lib/alias-scan";
 
 /**
  * The job description and the tags it produces, as one control.
@@ -30,14 +31,7 @@ export function seedStack(initial: { description: string; tags: readonly string[
   manual: string[];
   dismissed: string[];
 } {
-  const found = detectStack(initial.description);
-  const foundKeys = new Set(found.map((tag) => tag.toLowerCase()));
-  const savedKeys = new Set(initial.tags.map((tag) => tag.toLowerCase()));
-
-  return {
-    manual: initial.tags.filter((tag) => !foundKeys.has(tag.toLowerCase())),
-    dismissed: found.filter((tag) => !savedKeys.has(tag.toLowerCase())),
-  };
+  return seedEdits(detectStack(initial.description), initial.tags);
 }
 
 export function useStack(initial: { description: string; tags: readonly string[] }) {
