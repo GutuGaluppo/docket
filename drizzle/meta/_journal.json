@@ -50,6 +50,13 @@
       "when": 1787753994548,
       "tag": "0006_wakeful_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788431672229,
+      "tag": "0007_boring_vivisector",
+      "breakpoints": true
     }
   ]
 }

@@ -15,6 +15,7 @@ export type ExportEntry = {
   website: string | null;
   position: string;
   tags: string[];
+  benefits: string[];
   city: string | null;
   country: string | null;
   stage: string | null;
@@ -53,6 +54,7 @@ export const COLUMNS: readonly ExportColumn[] = [
   { key: "website", label: "Website", value: (e) => e.website ?? "" },
   { key: "position", label: "Position", value: (e) => e.position },
   { key: "stack", label: "Stack", value: (e) => joinTags(e.tags) },
+  { key: "benefits", label: "Benefits", value: (e) => joinTags(e.benefits) },
   { key: "city", label: "City", value: (e) => e.city ?? "" },
   { key: "country", label: "Country", value: (e) => e.country ?? "" },
   { key: "stage", label: "Stage", value: (e) => e.stage ?? "" },

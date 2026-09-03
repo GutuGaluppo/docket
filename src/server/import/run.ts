@@ -43,6 +43,7 @@ export async function runImport(
       notes: row.notes || null,
       jobDescription: row.jobDescription || null,
       tags: row.tags,
+      benefits: row.benefits,
       ...(row.createdAt ? { createdAt: row.createdAt } : {}),
     })),
   );

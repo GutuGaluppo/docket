@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import {
   applications,
   applicationTags,
+  applicationBenefits,
   interviews,
   stages,
   statusEvents,
@@ -30,6 +31,7 @@ export type Entry = {
   createdAt: Date;
   timezone: string | null;
   tags: string[];
+  benefits: string[];
 };
 
 /** Tags aggregated in SQL so a listing is one round trip, not one per row. */
@@ -37,6 +39,14 @@ export const tagsAgg = sql<string[]>`coalesce(
   (select array_agg(t.tag order by t.position, t.tag)
      from ${applicationTags} t
     where t.application_id = ${applications}."id"),
+  '{}'
+)`;
+
+/** What the advert offered, in the order the detector read it off the text. */
+export const benefitsAgg = sql<string[]>`coalesce(
+  (select array_agg(b.benefit order by b.position, b.benefit)
+     from ${applicationBenefits} b
+    where b.application_id = ${applications}."id"),
   '{}'
 )`;
 
@@ -136,6 +146,7 @@ export async function listEntries(
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       tags: tagsAgg,
+      benefits: benefitsAgg,
     })
     .from(applications)
     .where(where)
@@ -195,6 +206,7 @@ export type NewEntryInput = {
   jobDescription: string | null;
   timezone?: string | null;
   tags: string[];
+  benefits: string[];
   createdAt?: Date;
 };
 
@@ -243,6 +255,16 @@ export async function createEntry(
       input.tags.map((tag, position) => ({
         applicationId: row.id,
         tag,
+        position,
+      })),
+    );
+  }
+
+  if (input.benefits.length > 0) {
+    await db.insert(applicationBenefits).values(
+      input.benefits.map((benefit, position) => ({
+        applicationId: row.id,
+        benefit,
         position,
       })),
     );
@@ -314,6 +336,17 @@ export async function createEntries(
   );
   if (tagValues.length > 0) {
     await db.insert(applicationTags).values(tagValues).onConflictDoNothing();
+  }
+
+  const benefitValues = inserted.flatMap((row, index) =>
+    (rows[index]?.benefits ?? []).map((benefit, position) => ({
+      applicationId: row.id,
+      benefit,
+      position,
+    })),
+  );
+  if (benefitValues.length > 0) {
+    await db.insert(applicationBenefits).values(benefitValues).onConflictDoNothing();
   }
 
   await db.insert(statusEvents).values(
@@ -434,6 +467,7 @@ export async function getEntryDossier(scope: Scope, id: string): Promise<EntryDo
       timezone: applications.timezone,
       jobDescription: applications.jobDescription,
       tags: tagsAgg,
+      benefits: benefitsAgg,
       rejectedAt: applications.rejectedAt,
       rejectedAtStage: applications.rejectedAtStage,
       rejectionNote: applications.rejectionNote,
@@ -511,6 +545,7 @@ export async function getEntry(scope: Scope, id: string): Promise<EntryDetail | 
       timezone: applications.timezone,
       jobDescription: applications.jobDescription,
       tags: tagsAgg,
+      benefits: benefitsAgg,
     })
     .from(applications)
     .where(scope.owned(applications.userId, eq(applications.id, id)))
@@ -555,8 +590,9 @@ export async function updateEntry(
 
   if (!row) return false;
 
-  // Tags are positional and replaced wholesale: reconciling them one by one
-  // would cost more round trips than rewriting a list that is never long.
+  // Tags and benefits are positional and replaced wholesale: reconciling them
+  // one by one would cost more round trips than rewriting a list that is never
+  // long.
   // scope-exempt: the id came back from the scoped update directly above.
   await db.delete(applicationTags).where(eq(applicationTags.applicationId, row.id));
   if (input.tags.length > 0) {
@@ -564,6 +600,18 @@ export async function updateEntry(
       input.tags.map((tag, position) => ({
         applicationId: row.id,
         tag,
+        position,
+      })),
+    );
+  }
+
+  // scope-exempt: same id, same scoped update.
+  await db.delete(applicationBenefits).where(eq(applicationBenefits.applicationId, row.id));
+  if (input.benefits.length > 0) {
+    await db.insert(applicationBenefits).values(
+      input.benefits.map((benefit, position) => ({
+        applicationId: row.id,
+        benefit,
         position,
       })),
     );

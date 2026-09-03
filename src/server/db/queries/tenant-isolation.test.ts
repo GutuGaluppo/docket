@@ -97,6 +97,7 @@ describe.skipIf(!url)("tenant isolation", () => {
       notes: "private note",
       jobDescription: "React, TypeScript",
       tags: ["React", "TypeScript"],
+      benefits: [],
     });
     aliceEntryId = created.id;
   });
@@ -166,6 +167,7 @@ describe.skipIf(!url)("tenant isolation", () => {
       notes: null,
       jobDescription: null,
       tags: ["PostgreSQL"],
+      benefits: [],
     });
     const entry = await getEntry(malloryScope, malloryEntry.id);
     expect(entry?.protocolNumber).toBe(1);
@@ -209,6 +211,7 @@ describe.skipIf(!url)("the rejection archive", () => {
       notes: null,
       jobDescription: null,
       tags: ["Go"],
+      benefits: [],
     });
     entryId = created.id;
   });

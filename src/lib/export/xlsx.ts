@@ -30,6 +30,7 @@ const WIDTHS: Record<string, number> = {
   website: 24,
   position: 32,
   stack: 24,
+  benefits: 26,
   city: 18,
   country: 16,
   stage: 18,

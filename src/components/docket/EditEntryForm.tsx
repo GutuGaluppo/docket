@@ -12,6 +12,7 @@ import { editEntry } from "@/server/actions/entries";
 import type { EntryDetail } from "@/server/db/queries/applications";
 import { CityField } from "./CityField";
 import { StackField, useStack } from "./StackField";
+import { BenefitsField, useBenefits } from "./BenefitsField";
 
 /**
  * Corrects an entry that is already in the register.
@@ -27,6 +28,7 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
   const [serverError, setServerError] = useState("");
 
   const stack = useStack({ description: entry.jobDescription ?? "", tags: entry.tags });
+  const benefits = useBenefits({ description: stack.description, benefits: entry.benefits });
 
   const {
     register,
@@ -46,6 +48,7 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
       notes: entry.notes ?? "",
       jobDescription: entry.jobDescription ?? "",
       tags: entry.tags,
+      benefits: entry.benefits,
       timezone: entry.timezone ?? "",
     },
   });
@@ -56,8 +59,9 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
 
   useEffect(() => {
     setValue("tags", stack.tags, { shouldValidate: false });
+    setValue("benefits", benefits.benefits, { shouldValidate: false });
     setValue("jobDescription", stack.description, { shouldValidate: false });
-  }, [stack.tags, stack.description, setValue]);
+  }, [stack.tags, benefits.benefits, stack.description, setValue]);
 
   const onSubmit = handleSubmit((values) => {
     setServerError("");
@@ -66,6 +70,7 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
         ...values,
         id: entry.id,
         tags: stack.tags,
+        benefits: benefits.benefits,
         jobDescription: stack.description,
         // The timezone the entry was stamped in belongs to the stamp, so it
         // travels back unchanged rather than being re-read from this browser.
@@ -86,7 +91,10 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
     errors.tags?.message ||
     "";
 
-  const touched = isDirty || stack.description !== (entry.jobDescription ?? "");
+  const sameBenefits =
+    benefits.benefits.length === entry.benefits.length &&
+    benefits.benefits.every((benefit, index) => benefit === entry.benefits[index]);
+  const touched = isDirty || stack.description !== (entry.jobDescription ?? "") || !sameBenefits;
 
   return (
     <form
@@ -151,6 +159,8 @@ export function EditEntryForm({ entry }: { entry: EntryDetail }) {
         </div>
 
         <StackField stack={stack} id="edit-jobDescription" />
+
+        <BenefitsField benefits={benefits} hasDescription={stack.description.trim().length > 0} />
 
         <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="edit-notes">

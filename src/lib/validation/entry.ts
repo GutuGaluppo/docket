@@ -23,6 +23,17 @@ export const entryInputSchema = z.object({
     .array(trimmed(60).min(1))
     .max(40, "Forty tags is already more record than anyone needs.")
     .min(1, "Paste the job ad, or add a technology by hand."),
+  /**
+   * What the advert said the job offers. Optional where the stack is not: an
+   * entry with no technology on it is a record nobody can search, while plenty
+   * of real adverts genuinely name no benefit at all, and demanding one would
+   * only teach people to invent them.
+   */
+  benefits: z
+    .array(trimmed(60).min(1))
+    .max(40, "Forty benefits is already more record than anyone needs.")
+    .optional()
+    .default([]),
   /** IANA zone from the browser, e.g. "Europe/Berlin". */
   timezone: trimmed(64).optional().default(""),
 });

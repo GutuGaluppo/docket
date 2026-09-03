@@ -1,4 +1,5 @@
 import { detectStack } from "@/lib/stack-detector";
+import { detectBenefits } from "@/lib/benefit-detector";
 import { normalizeDomain } from "@/lib/company/domain";
 import { resolveCity } from "@/lib/cities";
 
@@ -11,6 +12,7 @@ export type ImportRow = {
   notes: string;
   jobDescription: string;
   tags: string[];
+  benefits: string[];
   createdAt: Date | null;
 };
 
@@ -76,7 +78,7 @@ export function parseCsv(text: string): string[][] {
    own export uses English ones. Both are accepted, so a user can round-trip.
 ------------------------------------------------------------------------- */
 
-const ALIASES: Record<keyof Omit<ImportRow, "tags" | "createdAt">, string[]> = {
+const ALIASES: Record<keyof Omit<ImportRow, "tags" | "benefits" | "createdAt">, string[]> = {
   company: ["company", "empresa"],
   website: ["website", "site", "url"],
   position: ["position", "posicao", "posição", "cargo", "role"],
@@ -87,6 +89,7 @@ const ALIASES: Record<keyof Omit<ImportRow, "tags" | "createdAt">, string[]> = {
 };
 
 const TAG_KEYS = ["tags", "stacks", "stack", "tecnologias"];
+const BENEFIT_KEYS = ["benefits", "beneficios", "benefícios", "perks"];
 const DATE_KEYS = ["createdat", "criadoem", "data da aplicacao", "data da aplicação", "date"];
 const LOCATION_KEYS = ["local", "pais/cidade", "país/cidade", "location"];
 
@@ -173,6 +176,18 @@ function toRow(record: Record<string, unknown>): ImportRow | { error: string } {
   // Nothing tagged but the ad survived? Re-run the detector over it.
   if (tags.length === 0 && jobDescription) tags = detectStack(jobDescription);
 
+  let benefits: string[] = [];
+  for (const name of BENEFIT_KEYS) {
+    const value = record[key(name)];
+    if (value !== undefined) {
+      benefits = splitTags(value);
+      if (benefits.length > 0) break;
+    }
+  }
+  // Same rule as the stack: a file that carried the ad but not the benefits —
+  // anything exported before this column existed — gets them read back out of it.
+  if (benefits.length === 0 && jobDescription) benefits = detectBenefits(jobDescription);
+
   return {
     company,
     website: normalizeDomain(pick(record, ALIASES.website)),
@@ -182,6 +197,7 @@ function toRow(record: Record<string, unknown>): ImportRow | { error: string } {
     notes: pick(record, ALIASES.notes),
     jobDescription,
     tags,
+    benefits,
     createdAt: parseDate(pick(record, DATE_KEYS)),
   };
 }

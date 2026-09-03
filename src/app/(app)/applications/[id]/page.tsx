@@ -205,6 +205,24 @@ async function Sheet({ id }: { id: string }) {
             </div>
           )}
 
+          {/* What the job asks for and what it gives, kept as two blocks. */}
+          {entry.benefits.length > 0 && (
+            <div className="sheet-block">
+              <h2 className="eyebrow sheet-block-title">Benefits</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {entry.benefits.map((benefit, index) => (
+                  <span
+                    key={benefit}
+                    className="stack-chip"
+                    style={{ "--rise-delay": `${index * 25}ms` } as React.CSSProperties}
+                  >
+                    {benefit}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="sheet-block">
             <h2 className="eyebrow sheet-block-title">Actions</h2>
             <div className="row-actions">

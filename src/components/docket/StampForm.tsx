@@ -11,6 +11,7 @@ import { CityField } from "./CityField";
 import { DraftReview } from "./DraftReview";
 import { PostingImport } from "./PostingImport";
 import { StackField, useStack } from "./StackField";
+import { BenefitsField, useBenefits } from "./BenefitsField";
 import { probableDomain } from "@/lib/company/domain";
 import type { PostingDraft, PostingField, PostingSource } from "@/lib/posting/types";
 import { stampApplication } from "@/server/actions/entries";
@@ -24,6 +25,7 @@ const EMPTY: EntryInput = {
   notes: "",
   jobDescription: "",
   tags: [],
+  benefits: [],
   timezone: "",
 };
 
@@ -40,6 +42,8 @@ export function StampForm() {
   // The description and the tags derived from it live in one hook, shared with
   // the correction form so a tag rule is never written twice.
   const stack = useStack({ description: "", tags: [] });
+  // The benefits are read off the same description; the stack field owns it.
+  const benefits = useBenefits({ description: stack.description, benefits: [] });
 
   /*
     Phase B — the review step.
@@ -76,8 +80,9 @@ export function StampForm() {
 
   useEffect(() => {
     setValue("tags", stack.tags, { shouldValidate: false });
+    setValue("benefits", benefits.benefits, { shouldValidate: false });
     setValue("jobDescription", stack.description, { shouldValidate: false });
-  }, [stack.tags, stack.description, setValue]);
+  }, [stack.tags, benefits.benefits, stack.description, setValue]);
 
   function clearMarks() {
     setMarked([]);
@@ -114,9 +119,11 @@ export function StampForm() {
       if (field === "jobDescription") stack.setDescription(draft.values.jobDescription);
       else setValue(field, draft.values[field], { shouldValidate: false });
     }
-    // The tag edits belonged to the previous description.
+    // The tag and benefit edits belonged to the previous description.
     stack.setDismissed([]);
     stack.setManual([]);
+    benefits.setDismissed([]);
+    benefits.setManual([]);
     setServerError("");
     setMarked(draft.filled);
     setSources(draft.sources);
@@ -128,6 +135,7 @@ export function StampForm() {
       const result = await stampApplication({
         ...values,
         tags: stack.tags,
+        benefits: benefits.benefits,
         jobDescription: stack.description,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
@@ -136,6 +144,8 @@ export function StampForm() {
         stack.setDescription("");
         stack.setDismissed([]);
         stack.setManual([]);
+        benefits.setDismissed([]);
+        benefits.setManual([]);
         clearMarks();
         /*
           Straight to the entry that was just created.
@@ -250,6 +260,8 @@ export function StampForm() {
             marked.includes("jobDescription") ? <span className="mark-flag">check</span> : undefined
           }
         />
+
+        <BenefitsField benefits={benefits} hasDescription={stack.description.trim().length > 0} />
 
         <div className="field col-span-full" suppressHydrationWarning>
           <label className="field-label" htmlFor="notes">

@@ -99,6 +99,26 @@ describe("parseJsonImport", () => {
     );
     expect(rows[0]?.tags).toEqual(["Rust", "Kubernetes"]);
   });
+
+  it("reads the benefits column when the file carries one", () => {
+    const { rows } = parseJsonImport(
+      JSON.stringify([{ company: "A", position: "B", benefits: "Remote work · Pension" }]),
+    );
+    expect(rows[0]?.benefits).toEqual(["Remote work", "Pension"]);
+  });
+
+  it("reads the benefits back out of the ad when the file predates the column", () => {
+    const { rows } = parseJsonImport(
+      JSON.stringify([
+        {
+          company: "A",
+          position: "B",
+          jobDescription: "Fully remote, 30 Urlaubstage and a learning budget.",
+        },
+      ]),
+    );
+    expect(rows[0]?.benefits).toEqual(["Remote work", "Paid leave", "Learning budget"]);
+  });
 });
 
 describe("parseCsvImport", () => {

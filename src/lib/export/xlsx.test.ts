@@ -95,7 +95,7 @@ describe("toXlsx", () => {
 
   it("writes the stamp as a date, in the zone it was made in", () => {
     // 21:41 UTC is 23:41 in Berlin, which is what the docket shows.
-    expect(sheet()).toContain(`<c r="I2" s="2"><v>${toSerialDate("17/08/2026 23:41")}</v></c>`);
+    expect(sheet()).toContain(`<c r="J2" s="2"><v>${toSerialDate("17/08/2026 23:41")}</v></c>`);
   });
 
   it("keeps every other column as text, spelling included", () => {
@@ -107,8 +107,8 @@ describe("toXlsx", () => {
   it("freezes the header and offers it as a filter", () => {
     const rows = SAMPLE_ENTRIES.length + 1;
     expect(sheet()).toContain(`<pane ySplit="1" topLeftCell="A2"`);
-    expect(sheet()).toContain(`<autoFilter ref="A1:J${rows}"/>`);
-    expect(sheet()).toContain(`<dimension ref="A1:J${rows}"/>`);
+    expect(sheet()).toContain(`<autoFilter ref="A1:K${rows}"/>`);
+    expect(sheet()).toContain(`<dimension ref="A1:K${rows}"/>`);
   });
 
   it("leaves an empty field out rather than writing an empty cell", () => {
@@ -122,7 +122,7 @@ describe("toXlsx", () => {
   it("wraps the stack inside its cell rather than widening the column", () => {
     // Style 3 is the wrapped one; the stack is column E.
     expect(sheet()).toContain(`<c r="E2" s="3" t="inlineStr">`);
-    expect(sheet()).toContain(`<c r="J2" s="3" t="inlineStr">`);
+    expect(sheet()).toContain(`<c r="K2" s="3" t="inlineStr">`);
   });
 
   it("states the height a wrapped row needs, because Excel will not work it out", () => {
@@ -133,7 +133,7 @@ describe("toXlsx", () => {
 
   it("still writes a workbook for an empty register", () => {
     const empty = sheet([]);
-    expect(empty).toContain(`<dimension ref="A1:J1"/>`);
+    expect(empty).toContain(`<dimension ref="A1:K1"/>`);
     expect(empty).toContain("<t>Company</t>");
   });
 

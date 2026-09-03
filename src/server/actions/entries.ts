@@ -55,6 +55,7 @@ export async function stampApplication(input: unknown): Promise<StampResult> {
     jobDescription: values.jobDescription || null,
     timezone: values.timezone || null,
     tags: values.tags,
+    benefits: values.benefits,
   });
 
   // Nº 1 is the last step of the funnel in section 3: the point where a visitor
@@ -99,6 +100,7 @@ export async function editEntry(input: unknown): Promise<ActionResult> {
     jobDescription: values.jobDescription || null,
     timezone: values.timezone || null,
     tags: values.tags,
+    benefits: values.benefits,
   });
 
   // Same reply for a row that is gone and a row that belongs to someone else:

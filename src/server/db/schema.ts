@@ -248,6 +248,35 @@ export const applicationTags = pgTable(
   ],
 );
 
+/**
+ * What the advert said the job offers, one row per benefit.
+ *
+ * Shaped like `application_tags` and for the same reasons: the order the
+ * detector found them in is worth keeping, and a benefit indexed on its own is
+ * what makes "how many of these offer a pension" answerable later without a
+ * scan of every description.
+ *
+ * Held apart from the tags rather than folded in beside them. A stack tag and a
+ * benefit are read off the same text but answer different questions — what the
+ * job needs against what it gives — and a single list would make the register
+ * unable to tell them apart.
+ */
+export const applicationBenefits = pgTable(
+  "application_benefits",
+  {
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => applications.id, { onDelete: "cascade" }),
+    benefit: text("benefit").notNull(),
+    /** Preserves the order the detector found them in. */
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.applicationId, t.benefit] }),
+    index("application_benefits_benefit_idx").on(t.benefit),
+  ],
+);
+
 /** Append-only. Never update or delete a row here. */
 export const statusEvents = pgTable(
   "status_events",
@@ -500,6 +529,7 @@ export const applicationsRelations = relations(applications, ({ one, many }) => 
   user: one(users, { fields: [applications.userId], references: [users.id] }),
   stage: one(stages, { fields: [applications.stageId], references: [stages.id] }),
   tags: many(applicationTags),
+  benefits: many(applicationBenefits),
   events: many(statusEvents),
   interviews: many(interviews),
 }));
@@ -519,6 +549,13 @@ export const interviewsRelations = relations(interviews, ({ one }) => ({
 export const applicationTagsRelations = relations(applicationTags, ({ one }) => ({
   application: one(applications, {
     fields: [applicationTags.applicationId],
+    references: [applications.id],
+  }),
+}));
+
+export const applicationBenefitsRelations = relations(applicationBenefits, ({ one }) => ({
+  application: one(applications, {
+    fields: [applicationBenefits.applicationId],
     references: [applications.id],
   }),
 }));
@@ -557,6 +594,7 @@ export const schema = {
   webhookEvents,
   applications,
   applicationTags,
+  applicationBenefits,
   statusEvents,
   stages,
   interviews,
@@ -573,6 +611,7 @@ export const schema = {
   interviewsRelations,
   applicationsRelations,
   applicationTagsRelations,
+  applicationBenefitsRelations,
   statusEventsRelations,
 };
 
