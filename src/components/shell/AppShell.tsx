@@ -269,7 +269,10 @@ export function AppShell({
           {/* Keyed by path so the entrance plays on every navigation: the page
               that arrives is a different page, and saying so in motion is
               cheaper to read than noticing the words changed. */}
-          <main key={pathname} className="content page-enter">
+          <main
+            key={pathname}
+            className={`content page-enter${pathname.startsWith("/board") ? " content-wide" : ""}`}
+          >
             {children}
           </main>
           <div className="content-footer">{footer}</div>

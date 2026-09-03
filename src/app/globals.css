@@ -1073,6 +1073,13 @@
     padding: 30px var(--content-pad) 56px;
   }
 
+  /* A board benefits from every horizontal pixel the shell can give it. Other
+     pages keep the readable line-length above; this route alone grows with the
+     viewport while its columns retain their own mobile overflow. */
+  .content-wide {
+    max-width: none;
+  }
+
   .content-footer {
     padding: 0 var(--content-pad, 22px) 34px;
   }

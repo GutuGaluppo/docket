@@ -70,11 +70,11 @@ export function TableSkeleton({ rows = 5, label }: { rows?: number; label: strin
 export function BoardSkeleton() {
   return (
     <Placeholder label="the board" className="bleed overflow-hidden pb-3">
-      <div className="flex min-w-max items-start gap-4">
+      <div className="flex w-full min-w-max items-start gap-4">
         {Array.from({ length: 5 }, (_, index) => (
           <div
             key={index}
-            className="flex w-[264px] flex-none flex-col gap-3 rounded-[3px] border border-rule bg-card p-3"
+            className="flex min-w-[264px] flex-1 basis-[264px] flex-col gap-3 rounded-[3px] border border-rule bg-card p-3"
           >
             <Bar className="h-3 w-24" />
             <Bar className="h-20 w-full" />

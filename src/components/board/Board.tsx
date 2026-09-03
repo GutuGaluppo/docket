@@ -58,7 +58,7 @@ export function Board({ columns, filed }: { columns: BoardColumn[]; filed: numbe
 
       {/* The board scrolls sideways on its own; the page never does. */}
       <div className="bleed overflow-x-auto pb-3">
-        <div className="flex min-w-max items-start gap-4">
+        <div className="flex w-full min-w-max items-start gap-4">
           {columns.map((column, index) => (
             <section
               key={column.stage.id}
@@ -68,9 +68,9 @@ export function Board({ columns, filed }: { columns: BoardColumn[]; filed: numbe
               }}
               onDragLeave={() => setDragOver((id) => (id === column.stage.id ? null : id))}
               onDrop={(event) => onDrop(column.stage.id, event)}
-              className={`flex w-[280px] flex-none flex-col gap-3 rounded-lg border p-3.5 transition-all duration-200 ${
-                dragOver === column.stage.id 
-                  ? "border-stamp bg-stamp-wash shadow-elevation-2 scale-[1.02]" 
+              className={`flex min-w-[280px] flex-1 basis-[280px] flex-col gap-3 rounded-lg border p-3.5 transition-all duration-200 ${
+                dragOver === column.stage.id
+                  ? "border-stamp bg-stamp-wash shadow-elevation-2 scale-[1.02]"
                   : "border-rule bg-card shadow-elevation-1 hover:shadow-elevation-2"
               }`}
             >
