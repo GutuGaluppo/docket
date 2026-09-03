@@ -84,11 +84,6 @@ src/
     resume/         the CV as data: schema, addressing, parsing, import (pure, tested)
     tailoring/      advert → requirements → coverage → Job Match (pure, tested)
     validation/     Zod schemas shared by form and action
-docs/
-  cv-tailoring.md   importing a CV, reading it against an advert, and what may never happen
-  entry-form.md     the entry form and the link pipeline, kept true by a test
-  loading.md        what waits on a query in each section, kept true by a test
-  pitch.md          the product in a paragraph, in English and Portuguese
 ```
 
 ## The rules that hold this up
@@ -118,12 +113,6 @@ docs/
    decided was worth marking — a judgement no commit count can make — so it does not move on
    every merge. Hovering it shows the commit the running deployment was built from, which is the
    separate question of whether a fix is live yet.
-6. **The entry form documents itself, or the build fails.** [`docs/entry-form.md`](docs/entry-form.md)
-   describes the form and the four phases of the link pipeline;
-   `src/lib/posting/documentation.test.ts` reads the source and fails when a module, board, field,
-   refused host or phase in the code is missing from the document, or when the document points at a
-   file that no longer exists. Change the form, change the document, same commit.
-
 ### Testing isolation for real
 
 `src/server/db/queries/tenant-isolation.test.ts` creates two users and has one try to read, export

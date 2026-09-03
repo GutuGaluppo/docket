@@ -26,3 +26,12 @@ blob-report/
 
 # Documentação interna de trabalho — não versionada por decisão do autor
 doc/
+/docs/
+
+# Keep repository documentation limited to the root README.
+*.md
+!/README.md
+
+# Generated application bundles and local reference captures.
+dist/
+/assets/*.pdf
