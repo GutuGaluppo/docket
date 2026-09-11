@@ -9,6 +9,7 @@ import { PageTitleBeacon } from "@/components/shell/PageTitle";
 import { RejectionButton } from "@/components/docket/RejectionButton";
 import { Stamp } from "@/components/docket/Stamp";
 import { Bar, Placeholder } from "@/components/Skeleton";
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
 import { elapsed, formatStamp, protocolNumber } from "@/lib/format";
 import { requireScope } from "@/server/auth/session";
 import { getEntryDossier, type EntryDossier } from "@/server/db/queries/applications";
@@ -72,7 +73,13 @@ async function Sheet({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <Stamp at={entry.createdAt} timezone={entry.timezone} status={entry.stage} size={172} />
+          <Stamp
+            at={entry.createdAt}
+            timezone={entry.timezone}
+            status={entry.stage}
+            rejected={entry.rejectedAt != null}
+            size={172}
+          />
           <span className="font-mono text-[11px] text-faint">{elapsed(entry.createdAt)}</span>
         </div>
       </header>
@@ -244,9 +251,11 @@ async function Sheet({ id }: { id: string }) {
               <Link href="/board" className="link-quiet">
                 See it on the board
               </Link>
-              <Link href="/cv" className="link-quiet">
-                Read your CV against this advert
-              </Link>
+              {CV_ANALYSIS_ENABLED && (
+                <Link href="/cv" className="link-quiet">
+                  Read your CV against this advert
+                </Link>
+              )}
               <Link href="/calendar" className="link-quiet">
                 Schedule an interview
               </Link>

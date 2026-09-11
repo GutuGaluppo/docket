@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { CV_ANALYSIS_ENABLED, CV_ANALYSIS_UNAVAILABLE } from "@/lib/features";
 import { fingerprintJob, fingerprintResume } from "@/lib/tailoring/fingerprint";
 import type { AnalysisStepId } from "@/lib/tailoring/steps";
 import { analyzeSchema } from "@/lib/validation/resume";
@@ -49,6 +50,10 @@ type Line =
 const encoder = new TextEncoder();
 
 export async function POST(request: NextRequest) {
+  if (!CV_ANALYSIS_ENABLED) {
+    return Response.json({ error: CV_ANALYSIS_UNAVAILABLE }, { status: 404 });
+  }
+
   const scope = await getScope();
   if (!scope) return Response.json({ error: "Sign in first." }, { status: 401 });
 

@@ -8,6 +8,7 @@ import { CompanyLogo } from "@/components/docket/CompanyLogo";
 import { Stamp } from "@/components/docket/Stamp";
 import { Bar, Placeholder } from "@/components/Skeleton";
 import { elapsed, protocolNumber } from "@/lib/format";
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
 import {
   getEntryCounts,
   listEntries,
@@ -42,12 +43,16 @@ const SUGGESTIONS: ReadonlyArray<{
     title: "Stamp an application",
     note: "Paste the link and the fields fill themselves in. Takes under a minute.",
   },
-  {
-    href: "/cv",
-    icon: "cv",
-    title: "Tailor your CV",
-    note: "Read one CV against one advert and see exactly what the role asks for.",
-  },
+  ...(CV_ANALYSIS_ENABLED
+    ? [
+        {
+          href: "/cv" as Route,
+          icon: "cv" as IconName,
+          title: "Tailor your CV",
+          note: "Read one CV against one advert and see exactly what the role asks for.",
+        },
+      ]
+    : []),
   {
     href: "/board",
     icon: "board",
@@ -190,7 +195,13 @@ async function Latest({ entries }: { entries: Promise<Entry[]> }) {
             {elapsed(entry.createdAt)}
           </span>
           <span className="hidden md:block">
-            <Stamp at={entry.createdAt} timezone={entry.timezone} status={entry.stage} size={104} />
+            <Stamp
+              at={entry.createdAt}
+              timezone={entry.timezone}
+              status={entry.stage}
+              rejected={entry.rejectedAt != null}
+              size={104}
+            />
           </span>
         </Link>
       ))}

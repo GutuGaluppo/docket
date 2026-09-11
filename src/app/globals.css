@@ -366,6 +366,11 @@
   .stamp svg {
     display: block;
   }
+  /* A filed rejection is pressed in red instead of the accent, so the archive
+     and the "Filed" register read as refusals at a glance. */
+  .stamp--rejected {
+    color: var(--danger);
+  }
 
   /* A field is one label plus one control. Grid cells stretch to the tallest
      in their row, so the pair is pinned to the bottom: a label that wraps onto

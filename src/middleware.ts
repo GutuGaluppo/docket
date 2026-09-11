@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
+
 const SESSION_COOKIES = ["authjs.session-token", "__Secure-authjs.session-token"];
 
 /**
@@ -8,6 +10,10 @@ const SESSION_COOKIES = ["authjs.session-token", "__Secure-authjs.session-token"
  * shell renders, not as the authorisation check.
  */
 export function middleware(request: NextRequest) {
+  if (!CV_ANALYSIS_ENABLED && request.nextUrl.pathname.startsWith("/cv")) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const hasSession = SESSION_COOKIES.some((name) => request.cookies.has(name));
   if (hasSession) return NextResponse.next();
 

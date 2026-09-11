@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { SectionHeader } from "@/components/SectionHeader";
 import { CvSkeleton } from "@/components/Skeleton";
 import { CvWorkspace } from "@/components/tailoring/CvWorkspace";
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
 import { analysisFreshness, fingerprintJob, fingerprintResume } from "@/lib/tailoring/fingerprint";
 import { JOB_MATCH_SCORING_VERSION } from "@/lib/tailoring/score";
 import { requireScope } from "@/server/auth/session";
@@ -122,6 +124,8 @@ async function Workspace({ data }: { data: ReturnType<typeof loadWorkspace> }) {
 }
 
 export default function CvPage() {
+  if (!CV_ANALYSIS_ENABLED) notFound();
+
   // Started here and awaited inside the boundary: the page's own render path
   // must not touch the database, or the skeleton below never gets to paint.
   const data = loadWorkspace();

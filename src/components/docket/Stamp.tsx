@@ -115,6 +115,7 @@ export function Stamp({
   at,
   timezone,
   status,
+  rejected = false,
   size = 168,
   className = "",
 }: {
@@ -122,17 +123,19 @@ export function Stamp({
   timezone?: string | null;
   /** The board stage the entry had reached. Falls back to the neutral record. */
   status?: string | null;
+  /** A filed rejection: the mark is pressed in red and reads "Rejected". */
+  rejected?: boolean;
   size?: number;
   className?: string;
 }) {
   const { date, time } = formatStamp(at, timezone);
-  const label = (status ?? "").trim() || "Stamped";
+  const label = rejected ? "Rejected" : (status ?? "").trim() || "Stamped";
   const compact = size < COMPACT_BELOW;
   const banner = statusLayout(label);
 
   return (
     <time
-      className={`stamp ${className}`}
+      className={`stamp${rejected ? " stamp--rejected" : ""} ${className}`}
       dateTime={at.toISOString()}
       style={{ width: size, height: size }}
     >

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { openCommandPalette } from "@/components/command/palette-channel";
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
 import { PageTitleProvider, usePageTitle } from "./PageTitle";
 import { SectionIcon, type IconName } from "./SectionIcon";
 
@@ -44,7 +45,9 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
       { href: "/archive", label: "Archive", icon: "archive" },
     ],
   },
-  { label: "Preparation", items: [{ href: "/cv", label: "CV", icon: "cv" }] },
+  ...(CV_ANALYSIS_ENABLED
+    ? [{ label: "Preparation", items: [{ href: "/cv" as Route, label: "CV", icon: "cv" as IconName }] }]
+    : []),
   { label: "Findings", items: [{ href: "/analytics", label: "Analytics", icon: "analytics" }] },
   { label: "Records", items: [{ href: "/docket/import", label: "Import", icon: "import" }] },
 ];

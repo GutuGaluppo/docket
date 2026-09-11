@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { SectionIcon, type IconName } from "@/components/shell/SectionIcon";
+import { CV_ANALYSIS_ENABLED } from "@/lib/features";
 import { COMMAND_PALETTE_EVENT } from "./palette-channel";
 
 /**
@@ -83,14 +84,18 @@ export function CommandPalette() {
         keywords: ["interviews", "events"],
         action: () => router.push("/calendar"),
       },
-      {
-        id: "nav-cv",
-        label: "Go to CV",
-        icon: "cv",
-        group: "Navigation",
-        keywords: ["resume", "match", "tailor"],
-        action: () => router.push("/cv"),
-      },
+      ...(CV_ANALYSIS_ENABLED
+        ? [
+            {
+              id: "nav-cv",
+              label: "Go to CV",
+              icon: "cv" as IconName,
+              group: "Navigation",
+              keywords: ["resume", "match", "tailor"],
+              action: () => router.push("/cv"),
+            },
+          ]
+        : []),
       {
         id: "nav-archive",
         label: "Go to Archive",
@@ -153,12 +158,16 @@ export function CommandPalette() {
 
   const close = useCallback(() => {
     dialogRef.current?.close();
+    setOpen(false);
   }, []);
 
   const show = useCallback(() => {
     setSearch("");
     setSelected(0);
-    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+    if (!dialogRef.current?.open) {
+      dialogRef.current?.showModal();
+      setOpen(true);
+    }
   }, []);
 
   const run = useCallback(
@@ -217,7 +226,6 @@ export function CommandPalette() {
       ref={dialogRef}
       className="modal w-[min(94vw,640px)]! max-w-[min(94vw,640px)]! mt-[12vh] mb-auto"
       aria-label="Commands"
-      onToggle={() => setOpen(dialogRef.current?.open ?? false)}
       onKeyDown={onListKey}
       onClick={(event) => {
         if (event.target === event.currentTarget) close();

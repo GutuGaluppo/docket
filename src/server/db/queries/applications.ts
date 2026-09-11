@@ -28,6 +28,8 @@ export type Entry = {
   country: string | null;
   notes: string | null;
   stage: string | null;
+  /** When the refusal was filed, or null while the application is still in play. */
+  rejectedAt: Date | null;
   createdAt: Date;
   timezone: string | null;
   tags: string[];
@@ -143,6 +145,7 @@ export async function listEntries(
       stage: sql<
         string | null
       >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+      rejectedAt: applications.rejectedAt,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       tags: tagsAgg,
@@ -541,6 +544,7 @@ export async function getEntry(scope: Scope, id: string): Promise<EntryDetail | 
       stage: sql<
         string | null
       >`(select s.name from ${stages} s where s.id = ${applications.stageId})`,
+      rejectedAt: applications.rejectedAt,
       createdAt: applications.createdAt,
       timezone: applications.timezone,
       jobDescription: applications.jobDescription,

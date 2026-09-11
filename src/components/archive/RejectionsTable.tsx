@@ -66,6 +66,7 @@ export function RejectionsTable({ rejections }: { rejections: readonly Rejection
                   at={rejection.rejectedAt}
                   timezone={rejection.timezone}
                   status={rejection.rejectedAtStage}
+                  rejected
                   size={104}
                 />
                 <span className="mt-2 block font-mono text-[11px] text-muted">

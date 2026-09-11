@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { NextRequest } from "next/server";
 
+import { CV_ANALYSIS_ENABLED, CV_ANALYSIS_UNAVAILABLE } from "@/lib/features";
 import { PDF_LIMITS } from "@/lib/pdf/limits";
 import { getScope } from "@/server/auth/session";
 import { createImport } from "@/server/db/queries/resumes";
@@ -58,6 +59,10 @@ const MESSAGES: Record<ImportFailureReason, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  if (!CV_ANALYSIS_ENABLED) {
+    return Response.json({ ok: false, error: CV_ANALYSIS_UNAVAILABLE }, { status: 404 });
+  }
+
   const scope = await getScope();
   if (!scope) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
 

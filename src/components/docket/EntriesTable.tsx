@@ -129,6 +129,7 @@ export function EntriesTable({ entries, query }: { entries: readonly Entry[]; qu
                       at={entry.createdAt}
                       timezone={entry.timezone}
                       status={entry.stage}
+                      rejected={entry.rejectedAt != null}
                       size={104}
                     />
                     <span className="mt-1.5 block font-mono text-[10px] text-faint">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { CV_ANALYSIS_ENABLED, CV_ANALYSIS_UNAVAILABLE } from "@/lib/features";
 import { cloneResume } from "@/lib/resume/edit";
 import { blankResume, type Resume } from "@/lib/resume/schema";
 import { parseResumeText } from "@/lib/resume/parse";
@@ -64,6 +65,8 @@ import { recompute } from "@/server/tailoring/analyze";
 export type ResumeError = { ok: false; error: string };
 
 async function scopeOrError(): Promise<Scope | ResumeError> {
+  if (!CV_ANALYSIS_ENABLED) return { ok: false, error: CV_ANALYSIS_UNAVAILABLE };
+
   try {
     return await requireScope();
   } catch (error) {
