@@ -14,9 +14,10 @@ test("a signed-out visitor is sent to sign-in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Docket" })).toBeVisible();
 });
 
-test("the root routes signed-out visitors to sign-in", async ({ page }) => {
+test("the root is the public landing page for signed-out visitors", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveURL(/\/sign-in/);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("link", { name: "Start your docket" }).first()).toBeVisible();
 });
 
 test("the sign-in page keeps the callback it was given", async ({ page }) => {
