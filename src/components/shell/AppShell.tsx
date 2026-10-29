@@ -111,6 +111,12 @@ const RAIL_KEY = "docket:rail";
  */
 const SCROLL_THRESHOLD = 96;
 
+/**
+ * Sections that are worked in rather than read: the board's columns and the CV
+ * with a panel either side of it both need every pixel the shell can give.
+ */
+const WIDE = ["/board", "/cv"];
+
 export function AppShell({
   email,
   signOut,
@@ -274,7 +280,7 @@ export function AppShell({
               cheaper to read than noticing the words changed. */}
           <main
             key={pathname}
-            className={`content page-enter${pathname.startsWith("/board") ? " content-wide" : ""}`}
+            className={`content page-enter${WIDE.some((prefix) => pathname.startsWith(prefix)) ? " content-wide" : ""}`}
           >
             {children}
           </main>
