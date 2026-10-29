@@ -127,20 +127,53 @@ describe("clicking a recommendation", () => {
 });
 
 describe("the document changing", () => {
-  it("marks the reading stale when the CV is edited by hand", () => {
+  it("rescores a hand edit against the stored reading instead of going stale", () => {
     const { state } = build();
     const element = resumeElements(state.resume).find((entry) => entry.target.itemId === "bul-1")!;
+    const next = element.write("Led the performance work on the playback surface.");
 
-    const edited = tailoringReducer(state, {
-      type: "resume-edited",
-      resume: element.write("Led the performance work on the playback surface."),
-    });
+    const edited = tailoringReducer(state, { type: "resume-edited", resume: next });
 
-    expect(edited.status).toBe("stale");
+    expect(edited.status).toBe("ready");
+    // The same arithmetic Apply runs on the server, so the two cannot disagree.
+    expect(edited.jobMatch).toEqual(computeCoverage(next, state.analysis!.jobAnalysis).jobMatch);
+    // The recommendations are the reading's, and a keystroke does not rewrite them.
+    expect(edited.analysis?.suggestions).toBe(state.analysis?.suggestions);
     // The panel keeps saying what the document now says, not what it said.
     expect(
       edited.suggestions.find((suggestion) => suggestion.targetItemId === "bul-1")?.currentText,
     ).toBe("Led the performance work on the playback surface.");
+  });
+
+  it("moves the figure up when a missing term is typed in", () => {
+    const { state } = build();
+    const before = state.jobMatch!.overallScore;
+    const withGraphQL = {
+      ...state.resume,
+      skills: state.resume.skills.map((group, index) =>
+        index === 0 ? { ...group, skills: [...group.skills, "GraphQL"] } : group,
+      ),
+    };
+
+    const edited = tailoringReducer(state, { type: "resume-edited", resume: withGraphQL });
+    expect(edited.jobMatch!.overallScore).toBeGreaterThan(before);
+    expect(edited.lastDelta).toBe(edited.jobMatch!.overallScore - before);
+  });
+
+  it("goes stale instead when the advert changed after the reading", () => {
+    const { state } = build();
+    const otherAdvert = tailoringReducer(state, {
+      type: "job-description",
+      applicationId: null,
+      text: "A different advert entirely.",
+    });
+    const edited = tailoringReducer(otherAdvert, {
+      type: "resume-edited",
+      resume: otherAdvert.resume,
+    });
+
+    expect(edited.status).toBe("stale");
+    expect(edited.jobMatch).toEqual(state.jobMatch);
   });
 
   it("does not go stale before there is a reading to invalidate", () => {

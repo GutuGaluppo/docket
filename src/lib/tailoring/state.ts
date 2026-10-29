@@ -1,6 +1,7 @@
 import type { Resume } from "@/lib/resume/schema";
 import { resolveTarget, toTarget } from "@/lib/resume/target";
 
+import { computeCoverage } from "./matching";
 import type { SuggestionFilter } from "./queue";
 import {
   applyEvent,
@@ -68,6 +69,13 @@ export type TailoringState = {
    */
   steps: AnalysisStep[];
 
+  /**
+   * True once the advert on screen is not the one the reading was made from.
+   * Until then an edit to the CV is scored against the stored reading as it is
+   * typed; after it, only a new reading can say anything true.
+   */
+  advertChanged: boolean;
+
   /** The move the last applied change or undo caused, for "↑ +3". */
   lastDelta: number | null;
   /** True while a write is in flight, so two Applies cannot race. */
@@ -86,6 +94,7 @@ export type TailoringAction =
   | { type: "analyzed"; analysis: TailoringAnalysis; history?: ResumeChange[] }
   | { type: "failed"; error: string }
   | { type: "resume-edited"; resume: Resume }
+  | { type: "focus"; key: string }
   | { type: "busy"; busy: boolean }
   | {
       type: "applied";
@@ -133,8 +142,15 @@ export function initialState(input: {
   analysis?: TailoringAnalysis | null;
   history?: ResumeChange[];
   status?: JobMatchStatus;
+  /**
+   * The CV was edited after the stored reading, and nothing else moved. The
+   * figure is then recomputed here rather than shown as stale — the reading of
+   * the advert still holds, and the arithmetic is the same one Apply runs.
+   */
+  rescore?: boolean;
 }): TailoringState {
-  const analysis = input.analysis ?? null;
+  const stored = input.analysis ?? null;
+  const analysis = stored && input.rescore ? rescored(stored, input.resume) : stored;
 
   return {
     resume: input.resume,
@@ -143,7 +159,7 @@ export function initialState(input: {
     analysis,
     suggestions: analysis?.suggestions ?? [],
     jobMatch: analysis?.jobMatch ?? null,
-    status: input.status ?? (analysis ? "ready" : "idle"),
+    status: input.rescore && analysis ? "ready" : (input.status ?? (analysis ? "ready" : "idle")),
     error: "",
     history: input.history ?? [],
     hoveredSuggestionId: null,
@@ -154,9 +170,16 @@ export function initialState(input: {
     selectedElementKey: null,
     scrollRequest: null,
     steps: initialSteps(),
+    advertChanged: false,
     lastDelta: null,
     busy: false,
   };
+}
+
+/** The stored reading, with its figure and working brought up to this document. */
+function rescored(analysis: TailoringAnalysis, resume: Resume): TailoringAnalysis {
+  const { jobMatch, coverage, explanation } = computeCoverage(resume, analysis.jobAnalysis);
+  return { ...analysis, jobMatch, coverage, explanation };
 }
 
 export function tailoringReducer(state: TailoringState, action: TailoringAction): TailoringState {
@@ -197,6 +220,13 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
         applicationId: action.applicationId,
         // A different advert makes the last reading a reading of something else.
         status: state.analysis ? "stale" : "idle",
+        advertChanged: Boolean(state.analysis),
+      };
+
+    case "focus":
+      return {
+        ...state,
+        scrollRequest: { key: action.key, nonce: (state.scrollRequest?.nonce ?? 0) + 1 },
       };
 
     case "analyzing":
@@ -225,6 +255,7 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
         status: "ready",
         error: "",
         steps: completeSteps(state.steps),
+        advertChanged: false,
         lastDelta: null,
         activeSuggestionId: null,
         selectedElementKey: null,
@@ -237,14 +268,38 @@ export function tailoringReducer(state: TailoringState, action: TailoringAction)
       // one useful thing a failure still knows.
       return { ...state, status: "error", error: action.error, steps: failSteps(state.steps) };
 
-    case "resume-edited":
+    case "resume-edited": {
+      const suggestions = refreshCurrentText(action.resume, state.suggestions);
+
+      // Only a reading that exists can go stale; with none, nothing changed.
+      if (!state.analysis) return { ...state, resume: action.resume, suggestions };
+
+      // The advert moved, so the stored reading answers a different question.
+      if (state.advertChanged) {
+        return { ...state, resume: action.resume, suggestions, status: "stale" };
+      }
+
+      /**
+       * The advert has not moved, so its reading still holds and only the
+       * arithmetic needs redoing — locally, on every edit, the way Apply
+       * already does it on the server. The figure follows the typing instead
+       * of going stale and waiting for a button.
+       */
+      const analysis = rescored(state.analysis, action.resume);
+      const before = state.jobMatch?.overallScore ?? 0;
+      const after = analysis.jobMatch.overallScore;
+
       return {
         ...state,
         resume: action.resume,
-        suggestions: refreshCurrentText(action.resume, state.suggestions),
-        // Only a reading that exists can go stale; with none, nothing changed.
-        status: state.analysis ? "stale" : state.status,
+        suggestions,
+        analysis: { ...analysis, suggestions: state.analysis.suggestions },
+        jobMatch: analysis.jobMatch,
+        // A keystroke that moves nothing keeps the last movement on screen.
+        lastDelta: after !== before ? after - before : state.lastDelta,
+        status: state.status === "analyzing" ? state.status : "ready",
       };
+    }
 
     case "busy":
       return { ...state, busy: action.busy };
