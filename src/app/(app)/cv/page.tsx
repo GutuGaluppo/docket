@@ -114,7 +114,11 @@ async function Workspace({ data }: { data: ReturnType<typeof loadWorkspace> }) {
         analysis: usable?.analysis ?? null,
         history: loaded.history ?? [],
         modelConfigured: isModelConfigured(),
-        stale: Boolean(usable) && freshness !== "current",
+        // Only a changed advert needs a new reading. A CV edited since, or a
+        // figure computed under older arithmetic, is brought up to date on the
+        // spot from the reading that is already stored.
+        stale: Boolean(usable) && freshness === "stale-job",
+        rescore: Boolean(usable) && (freshness === "stale-resume" || freshness === "stale-scoring"),
       }}
       library={library}
       sources={sources}

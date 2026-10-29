@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { addSkill } from "@/lib/resume/edit";
 import type { Resume } from "@/lib/resume/schema";
 import type { SuggestionFilter } from "@/lib/tailoring/queue";
 import { initialState, tailoringReducer, type TailoringState } from "@/lib/tailoring/state";
@@ -54,6 +55,8 @@ export type TailoringContextValue = {
   analysisId: string | null;
   /** True while the document has unsaved edits in the browser. */
   unsaved: boolean;
+  /** What the autosave is doing, for the line in the toolbar. */
+  saveState: "saved" | "saving" | "unsaved" | "failed";
   modelConfigured: boolean;
 
   hover: (suggestionId: string | null) => void;
@@ -62,6 +65,10 @@ export type TailoringContextValue = {
   startEditing: (suggestionId: string | null) => void;
 
   editResume: (resume: Resume) => void;
+  /** Puts one of the advert's terms in the Skills section. */
+  addKeyword: (term: string) => void;
+  /** Scrolls the editor or the preview to one element. */
+  focusElement: (key: string) => void;
   /** Flushes the debounce now. Answers whether the document reached the server. */
   saveNow: () => Promise<boolean>;
   /** Throws away what the debounce was holding, when somebody says to. */
@@ -72,6 +79,8 @@ export type TailoringContextValue = {
   cancelAnalysis: () => void;
 
   apply: (suggestion: ResumeSuggestion, text: string, edited: boolean) => void;
+  /** Accepts several cards as written, one after another, stopping at the first failure. */
+  applyMany: (suggestions: readonly ResumeSuggestion[]) => void;
   dismiss: (suggestionId: string) => void;
   restore: (suggestionId: string) => void;
   undo: (change: ResumeChange) => void;
@@ -95,8 +104,10 @@ export type TailoringInitialData = {
   history: ResumeChange[];
   /** Whether a model is available; the interface says so rather than implying it. */
   modelConfigured: boolean;
-  /** True when the document has been edited since the stored reading. */
+  /** True when the advert changed since the stored reading. */
   stale: boolean;
+  /** True when only the CV moved since, so the figure is recomputed on arrival. */
+  rescore?: boolean;
 };
 
 export function TailoringProvider({
@@ -114,6 +125,7 @@ export function TailoringProvider({
       applicationId: data.applicationId,
       analysis: data.analysis,
       history: data.history,
+      rescore: data.rescore,
       status: data.analysis
         ? data.stale
           ? ("stale" as const)
@@ -125,6 +137,8 @@ export function TailoringProvider({
 
   const [analysisId, setAnalysisId] = useState<string | null>(data.analysisId);
   const [unsaved, setUnsaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [, startTransition] = useTransition();
 
   /* Autosave ---------------------------------------------------------------- */
@@ -136,9 +150,16 @@ export function TailoringProvider({
       const document = pending.current;
       if (!document) return;
       pending.current = null;
-      void saveResume({ id: data.resumeId, resume: document }).then((result) => {
-        if (result.ok) setUnsaved(false);
-      });
+      setSaving(true);
+      void saveResume({ id: data.resumeId, resume: document })
+        .then((result) => {
+          // A newer edit may have arrived while this one was in flight; it has
+          // its own timer and its own save, and is still unsaved.
+          if (result.ok && !pending.current) setUnsaved(false);
+          setSaveFailed(!result.ok);
+        })
+        .catch(() => setSaveFailed(true))
+        .finally(() => setSaving(false));
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
@@ -175,6 +196,18 @@ export function TailoringProvider({
     setUnsaved(true);
     dispatch({ type: "resume-edited", resume });
   }, []);
+
+  // Read through a ref so the callback below keeps one identity while typing.
+  const resumeRef = useRef(state.resume);
+  resumeRef.current = state.resume;
+
+  const addKeyword = useCallback(
+    (term: string) => {
+      const next = addSkill(resumeRef.current, term);
+      if (next !== resumeRef.current) editResume(next);
+    },
+    [editResume],
+  );
 
   /* Reading the advert ------------------------------------------------------ */
 
@@ -334,12 +367,34 @@ export function TailoringProvider({
   }, []);
 
   /* Acting on a recommendation ---------------------------------------------- */
+  /**
+   * Applying writes on the server against the stored document, so whatever the
+   * debounce is still holding goes first — otherwise the answer would come back
+   * without the sentence typed a second ago, and the next save would put it
+   * back without the change.
+   */
+  const flush = useCallback(async () => {
+    const document = pending.current;
+    if (!document) return true;
+    pending.current = null;
+    const saved = await saveResume({ id: data.resumeId, resume: document });
+    if (saved.ok) setUnsaved(false);
+    else pending.current = document;
+    return saved.ok;
+  }, [data.resumeId]);
+
   const apply = useCallback(
     (suggestion: ResumeSuggestion, text: string, edited: boolean) => {
       if (!analysisId) return;
       dispatch({ type: "busy", busy: true });
 
       startTransition(async () => {
+        if (!(await flush())) {
+          dispatch({ type: "failed", error: "Your latest edits could not be saved." });
+          dispatch({ type: "busy", busy: false });
+          return;
+        }
+
         const result = await applyResumeSuggestion({
           analysisId,
           suggestionId: suggestion.id,
@@ -362,7 +417,52 @@ export function TailoringProvider({
         });
       });
     },
-    [analysisId],
+    [analysisId, flush],
+  );
+
+  const applyMany = useCallback(
+    (suggestions: readonly ResumeSuggestion[]) => {
+      if (!analysisId || suggestions.length === 0) return;
+      dispatch({ type: "busy", busy: true });
+
+      startTransition(async () => {
+        if (!(await flush())) {
+          dispatch({ type: "failed", error: "Your latest edits could not be saved." });
+          dispatch({ type: "busy", busy: false });
+          return;
+        }
+
+        // One at a time, in the order shown: each write recomputes the figure
+        // against the document the previous one left behind.
+        for (const suggestion of suggestions) {
+          const text = suggestion.suggestedText?.trim();
+          if (!text) continue;
+
+          const result = await applyResumeSuggestion({
+            analysisId,
+            suggestionId: suggestion.id,
+            text,
+            edited: false,
+          });
+
+          if (!result.ok) {
+            dispatch({ type: "failed", error: result.error });
+            break;
+          }
+
+          dispatch({
+            type: "applied",
+            resume: result.resume,
+            change: result.change,
+            jobMatch: result.jobMatch,
+            status: "applied",
+          });
+        }
+
+        dispatch({ type: "busy", busy: false });
+      });
+    },
+    [analysisId, flush],
   );
 
   const dismiss = useCallback(
@@ -426,12 +526,15 @@ export function TailoringProvider({
       resumeId: data.resumeId,
       analysisId,
       unsaved,
+      saveState: saving ? "saving" : saveFailed ? "failed" : unsaved ? "unsaved" : "saved",
       modelConfigured: data.modelConfigured,
       hover: (suggestionId) => dispatch({ type: "hover", suggestionId }),
       activate: (suggestionId) => dispatch({ type: "activate", suggestionId }),
       setFilter: (filter) => dispatch({ type: "filter", filter }),
       startEditing: (suggestionId) => dispatch({ type: "edit", suggestionId }),
       editResume,
+      addKeyword,
+      focusElement: (key) => dispatch({ type: "focus", key }),
       saveNow,
       discardUnsaved,
       setJobSource: ({ applicationId, text }) =>
@@ -439,6 +542,7 @@ export function TailoringProvider({
       runAnalysis,
       cancelAnalysis,
       apply,
+      applyMany,
       dismiss,
       restore,
       undo,
@@ -449,12 +553,16 @@ export function TailoringProvider({
       data.modelConfigured,
       analysisId,
       unsaved,
+      saving,
+      saveFailed,
       cancelAnalysis,
       editResume,
+      addKeyword,
       saveNow,
       discardUnsaved,
       runAnalysis,
       apply,
+      applyMany,
       dismiss,
       restore,
       undo,

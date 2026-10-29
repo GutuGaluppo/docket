@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { SECTION_LABELS } from "@/lib/resume/schema";
+import { resolveTarget, toTarget } from "@/lib/resume/target";
 import { DIMENSION_LABELS } from "@/lib/tailoring/score";
 import type { ResumeChange, ResumeSuggestion, SuggestionType } from "@/lib/tailoring/types";
 
@@ -11,16 +12,16 @@ import { useTailoring } from "./TailoringProvider";
 /**
  * One recommendation, and the three things a person can do with it.
  *
- * Apply writes the text as it stands. Edit opens it so they can write their
- * own version first — which is the same act, recorded as theirs. Dismiss
+ * Accept writes the text as it stands. Edit opens it so they can write their
+ * own version first — which is the same act, recorded as theirs. Ignore
  * changes nothing at all, and deliberately does not move the figure: declining
  * advice is not evidence of a worse CV.
  *
  * A card with no suggested text is not a broken card. It is the honest shape of
  * a gap — the advert asks for GraphQL, the CV has never mentioned it, and there
  * is no sentence that can be written from what the document says. Those cards
- * offer Edit and Dismiss, never Apply, because Apply would have to invent
- * something.
+ * offer Edit and Ignore, never Accept, because Accept would have to invent
+ * something — and for the same reason they cannot be picked for a bulk Accept.
  */
 
 const TYPE_LABELS: Record<SuggestionType, string> = {
@@ -38,10 +39,16 @@ const TYPE_LABELS: Record<SuggestionType, string> = {
 export function SuggestionCard({
   suggestion,
   change,
+  picked = false,
+  onPick,
 }: {
   suggestion: ResumeSuggestion;
   /** The applied change this card produced, when it produced one. */
   change?: ResumeChange;
+  /** Whether it is part of the selection a bulk Accept would apply. */
+  picked?: boolean;
+  /** Present only when the card can be accepted as written. */
+  onPick?: () => void;
 }) {
   const { state, hover, activate, startEditing, apply, dismiss, restore, undo } = useTailoring();
 
@@ -53,13 +60,12 @@ export function SuggestionCard({
     if (editing) setDraft(suggestion.suggestedText ?? suggestion.currentText ?? "");
   }, [editing, suggestion.suggestedText, suggestion.currentText]);
 
-  const path = [
-    SECTION_LABELS[suggestion.targetSectionId],
-    suggestion.targetEntryId,
-    suggestion.targetItemId,
-  ]
-    .filter(Boolean)
-    .join(" → ");
+  // Where it points, in the document's own words rather than its ids.
+  const path = useMemo(() => {
+    const target = toTarget(suggestion);
+    const element = target ? resolveTarget(state.resume, target) : null;
+    return element ? element.path.join(" → ") : SECTION_LABELS[suggestion.targetSectionId];
+  }, [suggestion, state.resume]);
 
   const settled = suggestion.status !== "pending";
 
@@ -76,6 +82,15 @@ export function SuggestionCard({
       onFocus={() => hover(suggestion.id)}
       onBlur={() => hover(null)}
     >
+      {onPick && (
+        <input
+          type="checkbox"
+          className="tl-card-pick"
+          checked={picked}
+          onChange={onPick}
+          aria-label={`Select “${suggestion.title}” to accept with the others`}
+        />
+      )}
       <button
         type="button"
         className="cv-card-open"
@@ -101,6 +116,9 @@ export function SuggestionCard({
           {suggestion.status === "dismissed" && <span className="cv-chip">dismissed</span>}
         </span>
         <span className="cv-card-title">{suggestion.title}</span>
+        {!active && suggestion.suggestedText && !settled && (
+          <span className="tl-card-preview">{suggestion.suggestedText}</span>
+        )}
         <span className="cv-card-path">{path}</span>
       </button>
 
@@ -163,7 +181,7 @@ export function SuggestionCard({
                 onClick={() => apply(suggestion, suggestion.suggestedText!, false)}
                 suppressHydrationWarning
               >
-                Apply
+                <span aria-hidden="true">✓</span> Accept
               </button>
             )}
 
@@ -176,7 +194,7 @@ export function SuggestionCard({
                   onClick={() => apply(suggestion, draft, true)}
                   suppressHydrationWarning
                 >
-                  Apply my version
+                  Accept my version
                 </button>
                 <button
                   type="button"
@@ -216,7 +234,7 @@ export function SuggestionCard({
                   onClick={() => dismiss(suggestion.id)}
                   suppressHydrationWarning
                 >
-                  Dismiss
+                  Ignore
                 </button>
               )
             )}

@@ -23,58 +23,57 @@ import { useTailoring } from "./TailoringProvider";
  * describes a CV three edits ago is worse than no figure, so a document edited
  * since the last reading says "changed since" and offers to read it again.
  */
-export function JobMatchPanel() {
+export function JobMatchPanel({ jobLabel }: { jobLabel?: string }) {
   const { state, runAnalysis, modelConfigured } = useTailoring();
   const { jobMatch, status, lastDelta } = state;
 
-  const pending = state.suggestions.filter((suggestion) => suggestion.status === "pending").length;
   const score = jobMatch?.overallScore ?? null;
+  const shown = score !== null && status !== "idle";
 
   return (
-    <section className="cv-match" aria-labelledby="job-match-heading">
-      <div className="cv-match-figure">
-        <h2 id="job-match-heading" className="eyebrow text-stamp">
-          Job Match
-        </h2>
-        <p className="cv-match-score">
-          {score === null || status === "idle" ? "—" : `${score}%`}
-          {lastDelta !== null && lastDelta !== 0 && status !== "idle" && (
+    <section className="tl-card cv-match" aria-labelledby="job-match-heading">
+      <div className="tl-score">
+        <ScoreRing value={shown ? score : null} />
+        <div className="tl-score-body">
+          <h2 id="job-match-heading" className="tl-card-title">
+            Job Match
+          </h2>
+          <p className="tl-score-band">{shown ? matchLabel(score) : "Not read yet"}</p>
+          {jobLabel && <p className="tl-score-job">{jobLabel}</p>}
+          {lastDelta !== null && lastDelta !== 0 && shown && (
             <span
               className="cv-match-delta"
               data-direction={lastDelta > 0 ? "up" : "down"}
               aria-label={`${lastDelta > 0 ? "up" : "down"} ${Math.abs(lastDelta)} points since the last change`}
             >
-              {lastDelta > 0 ? "↑" : "↓"} {lastDelta > 0 ? "+" : ""}
+              {lastDelta > 0 ? "↑ +" : "↓ "}
               {lastDelta}
             </span>
           )}
-        </p>
-        <p className="cv-match-band">{score === null ? "Not read yet" : matchLabel(score)}</p>
-        <p className="cv-match-caveat">
-          An estimate of how closely this CV answers this advert. It is not an ATS score and not a
-          prediction — no two systems read a CV the same way.
-        </p>
+        </div>
       </div>
 
-      <div className="cv-match-bars">
-        {DIMENSION_ORDER.map((dimension) => {
-          const value = jobMatch?.[dimension] ?? null;
-          return (
-            <div key={dimension} className="cv-bar" title={DIMENSION_HINTS[dimension]}>
-              <span className="cv-bar-label">{DIMENSION_LABELS[dimension]}</span>
-              <span className="cv-bar-track" aria-hidden="true">
-                <span className="cv-bar-fill" style={{ width: `${value ?? 0}%` }} />
-              </span>
-              <span className="cv-bar-value">
-                {value === null ? "—" : `${value}%`}
-                {value === null && (
-                  <span className="sr-only">, nothing in the advert to measure</span>
-                )}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {status !== "idle" && (
+        <div className="cv-match-bars">
+          {DIMENSION_ORDER.map((dimension) => {
+            const value = jobMatch?.[dimension] ?? null;
+            return (
+              <div key={dimension} className="cv-bar" title={DIMENSION_HINTS[dimension]}>
+                <span className="cv-bar-label">{DIMENSION_LABELS[dimension]}</span>
+                <span className="cv-bar-track" aria-hidden="true">
+                  <span className="cv-bar-fill" style={{ width: `${value ?? 0}%` }} />
+                </span>
+                <span className="cv-bar-value">
+                  {value === null ? "—" : `${value}%`}
+                  {value === null && (
+                    <span className="sr-only">, nothing in the advert to measure</span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="cv-match-status" aria-live="polite">
         {status === "analyzing" && (
@@ -82,31 +81,25 @@ export function JobMatchPanel() {
         )}
 
         {status === "ready" && (
-          <p className="cv-status-line">
-            {pending === 1 ? "1 recommendation" : `${pending} recommendations`} to review
-            {state.analysis?.source === "heuristic" && (
-              <>
-                {" · "}
-                <span className="text-muted">
-                  {modelConfigured
-                    ? "written without the model this time"
-                    : "structural reading only — no model is configured"}
-                </span>
-              </>
-            )}
+          <p className="cv-status-line text-muted">
+            Updates as you edit.
+            {state.analysis?.source === "heuristic" &&
+              (modelConfigured
+                ? " Written without the model this time."
+                : " Structural reading only — no model is configured.")}
           </p>
         )}
 
         {status === "stale" && (
           <p className="cv-status-line">
-            <span className="cv-flagged">CV changed since the last reading.</span>{" "}
+            <span className="cv-flagged">The advert changed since this reading.</span>{" "}
             <button
               type="button"
               className="link-quiet"
               onClick={runAnalysis}
               suppressHydrationWarning
             >
-              Recalculate Job Match
+              Tailor to the new advert
             </button>
           </p>
         )}
@@ -127,13 +120,46 @@ export function JobMatchPanel() {
 
         {status === "idle" && (
           <p className="cv-status-line text-muted">
-            Add a job description to see how well this CV matches the role.
+            Choose an advert and press Tailor to see how well this CV answers it.
           </p>
         )}
       </div>
 
       {state.analysis && <WhyThisFigure explanation={state.analysis.explanation} />}
+
+      <p className="cv-match-caveat">
+        An estimate of how closely this CV answers this advert — not an ATS score, and not a
+        prediction.
+      </p>
     </section>
+  );
+}
+
+/**
+ * The figure as a dial. The arc is decoration; the number inside it is the
+ * figure, and it is the only part a screen reader is given.
+ */
+function ScoreRing({ value }: { value: number | null }) {
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  const fraction = value === null ? 0 : Math.max(0, Math.min(100, value)) / 100;
+  const band = value === null ? "none" : value >= 60 ? "high" : value >= 40 ? "mid" : "low";
+
+  return (
+    <div className="tl-ring" data-band={band}>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle className="tl-ring-track" cx="32" cy="32" r={radius} />
+        <circle
+          className="tl-ring-fill"
+          cx="32"
+          cy="32"
+          r={radius}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - fraction)}
+        />
+      </svg>
+      <span className="tl-ring-value">{value === null ? "—" : value}</span>
+    </div>
   );
 }
 

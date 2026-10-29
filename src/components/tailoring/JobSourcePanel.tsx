@@ -89,11 +89,7 @@ export function JobSourcePanel({ sources }: { sources: AdvertSource[] }) {
           onClick={runAnalysis}
           suppressHydrationWarning
         >
-          {analyzing
-            ? "Reading…"
-            : state.analysis
-              ? "Read it again"
-              : "Read my CV against this advert"}
+          {analyzing ? "Tailoring…" : state.analysis ? "Tailor again" : "Tailor my CV to this advert"}
         </button>
 
         <p className="cv-source-note">

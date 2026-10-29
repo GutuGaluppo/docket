@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { hasResumeContent } from "@/lib/resume/text";
-import { elementDomId } from "@/lib/resume/target";
 
 import { ResumeDocument } from "./ResumeDocument";
 import { ResumeStart } from "./ResumeStart";
 import { useTailoring } from "./TailoringProvider";
 
 /**
- * The document, connected to everything else on the screen.
+ * The document as fields, connected to everything else on the screen.
  *
  * The fields themselves live in `ResumeDocument`, which knows nothing about
- * recommendations; what is added here is the part that only makes sense next to
- * the panel: which element a card is pointing at, and the one piece of
- * imperative behaviour in the feature — a click on a recommendation scrolls its
- * field into view and focuses it. Hovering deliberately does neither, because a
- * page that moves under the pointer cannot be read down.
+ * recommendations; what is added here is which element a card is pointing at.
+ * Scrolling to it is the document pane's job, because the same request has to
+ * land on the preview when that is the view on screen.
  */
 export function ResumeEditor() {
   const { state, editResume, resumeId } = useTailoring();
@@ -35,20 +32,6 @@ export function ResumeEditor() {
    */
   const [pasting, setPasting] = useState(false);
   const empty = !hasResumeContent(resume);
-
-  useEffect(() => {
-    const request = state.scrollRequest;
-    if (!request) return;
-
-    const node = document.getElementById(elementDomId(request.key));
-    if (!node) return;
-
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    node.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "center" });
-    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
-      node.focus({ preventScroll: true });
-    }
-  }, [state.scrollRequest]);
 
   if (pasting && empty) {
     return <ResumeStart mode="replace" resumeId={resumeId} onCancel={() => setPasting(false)} />;
