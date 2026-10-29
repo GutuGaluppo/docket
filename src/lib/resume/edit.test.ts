@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { sampleResume } from "@/test/resume";
 
-import { addBullet, addEntry, cloneResume, removeBullet, removeEntry } from "./edit";
+import { addBullet, addEntry, addSkill, cloneResume, removeBullet, removeEntry } from "./edit";
+import { blankResume } from "./schema";
 import { resumeElements } from "./target";
 
 describe("copying a document", () => {
@@ -61,5 +62,26 @@ describe("adding and removing", () => {
 
     const removed = removeBullet(added, "experience", "exp-loudly", "bul-1");
     expect(removed.experience[0]!.bullets.map((bullet) => bullet.id)).not.toContain("bul-1");
+  });
+});
+
+describe("adding a skill from the keyword list", () => {
+  it("appends it to the first group", () => {
+    const next = addSkill(sampleResume(), "GraphQL");
+    expect(next.skills[0]?.skills).toEqual(["React", "TypeScript", "CSS", "GraphQL"]);
+    expect(next.skills[1]?.skills).toEqual(["Docker", "Git"]);
+  });
+
+  it("refuses a skill any group already lists, whatever the casing", () => {
+    const source = sampleResume();
+    expect(addSkill(source, "docker")).toBe(source);
+    expect(addSkill(source, "  ")).toBe(source);
+  });
+
+  it("starts a group when the document has none", () => {
+    const empty = { ...blankResume(), skills: [] };
+    const next = addSkill(empty, "GraphQL");
+    expect(next.skills).toHaveLength(1);
+    expect(next.skills[0]).toMatchObject({ name: "Skills", skills: ["GraphQL"] });
   });
 });

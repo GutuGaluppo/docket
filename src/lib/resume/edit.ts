@@ -87,6 +87,30 @@ export function setEntryField<S extends EntrySection>(
 }
 
 /**
+ * Adding one skill, the way the keyword list offers to.
+ *
+ * It lands in the first group, or in a new "Skills" group when there is none,
+ * and it is refused — the same document comes back — when any group already
+ * lists it under any casing. The person pressing Add is the one saying it is
+ * true of them; this only saves them finding the field.
+ */
+export function addSkill(resume: Resume, skill: string): Resume {
+  const name = skill.trim();
+  if (!name) return resume;
+
+  const listed = resume.skills.some((group) =>
+    group.skills.some((existing) => existing.toLowerCase() === name.toLowerCase()),
+  );
+  if (listed) return resume;
+
+  const [first, ...rest] = resume.skills;
+  if (!first) {
+    return { ...resume, skills: [{ ...blankSkillGroup("Skills"), skills: [name] }] };
+  }
+  return { ...resume, skills: [{ ...first, skills: [...first.skills, name] }, ...rest] };
+}
+
+/**
  * An independent copy of a document.
  *
  * Every id is minted again. The rows would be independent either way — they are
