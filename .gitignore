@@ -23,6 +23,8 @@ blob-report/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+# Local Claude Code configuration, not shared with the repository.
+.claude/
 
 # Documentação interna de trabalho — não versionada por decisão do autor
 doc/
