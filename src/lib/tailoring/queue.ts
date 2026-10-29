@@ -98,6 +98,61 @@ export function sortSuggestions(
   });
 }
 
+export type SuggestionGrouping = "section" | "priority";
+
+export type SuggestionGroup = { id: string; label: string; items: ResumeSuggestion[] };
+
+const PRIORITY_LABELS: Record<SuggestionPriority, string> = {
+  high: "High priority",
+  medium: "Medium priority",
+  low: "Low priority",
+};
+
+/**
+ * The same sorted list, cut into headed groups.
+ *
+ * Groups appear in the order their first member does, so grouping by section
+ * still reads down the page and grouping by priority still starts with what
+ * matters most. Anything already settled is kept out of the groups and handed
+ * back on its own: it is the record of what was done, not work still to do.
+ */
+export function groupSuggestions(
+  sorted: readonly ResumeSuggestion[],
+  by: SuggestionGrouping,
+  sectionLabel: (suggestion: ResumeSuggestion) => string,
+): { groups: SuggestionGroup[]; settled: ResumeSuggestion[] } {
+  const groups = new Map<string, SuggestionGroup>();
+  const settled: ResumeSuggestion[] = [];
+
+  for (const suggestion of sorted) {
+    if (suggestion.status !== "pending") {
+      settled.push(suggestion);
+      continue;
+    }
+    const id = by === "priority" ? suggestion.priority : suggestion.targetSectionId;
+    const label = by === "priority" ? PRIORITY_LABELS[suggestion.priority] : sectionLabel(suggestion);
+    const group = groups.get(id) ?? { id, label, items: [] };
+    group.items.push(suggestion);
+    groups.set(id, group);
+  }
+
+  if (by === "priority") {
+    return {
+      groups: [...groups.values()].sort(
+        (a, b) =>
+          PRIORITY_RANK[a.id as SuggestionPriority] - PRIORITY_RANK[b.id as SuggestionPriority],
+      ),
+      settled,
+    };
+  }
+  return { groups: [...groups.values()], settled };
+}
+
+/** Whether a card can be accepted as it stands, without anybody writing anything. */
+export function isAcceptable(suggestion: ResumeSuggestion): boolean {
+  return suggestion.status === "pending" && Boolean(suggestion.suggestedText?.trim());
+}
+
 function targetKeyOf(suggestion: ResumeSuggestion): string {
   return [
     suggestion.targetSectionId,
