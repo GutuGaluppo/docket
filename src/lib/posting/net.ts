@@ -92,10 +92,10 @@ function isBlockedV6(ip: string): boolean {
   if (!groups) return true;
   const [g0 = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0, g5 = 0, g6 = 0, g7 = 0] = groups;
 
-  // Unspecified (::) and loopback (::1).
-  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0 && g6 === 0) {
-    return g7 === 0 || g7 === 1;
-  }
+  // The whole of ::/96 is the retired IPv4-compatible form, which holds "::" and
+  // "::1" too. Nothing public was ever assigned there, so refuse the block
+  // instead of judging the IPv4 tail some stacks read out of it.
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0) return true;
   // IPv4-mapped (::ffff:0:0/96) and NAT64 (64:ff9b::/96): judge the v4 inside.
   const mapped = g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff;
   const nat64 = g0 === 0x0064 && g1 === 0xff9b && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0;

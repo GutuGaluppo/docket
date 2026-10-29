@@ -50,4 +50,10 @@ describe("isBlockedAddress", () => {
   it("blocks the 6to4 range, which tunnels to arbitrary v4", () => {
     expect(isBlockedAddress("2002:7f00:1::")).toBe(true);
   });
+
+  it("blocks the retired IPv4-compatible block ::/96 in every form", () => {
+    for (const ip of ["::127.0.0.1", "::7f00:1", "::a9fe:a9fe", "::169.254.169.254", "::2"]) {
+      expect(isBlockedAddress(ip), ip).toBe(true);
+    }
+  });
 });
