@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="10" fill="#DBD9D1"/>
-  <g transform="rotate(-3 32 32)">
-    <rect x="9" y="15" width="46" height="34" rx="3" fill="none" stroke="#6C3FA8" stroke-width="4"/>
-    <rect x="15" y="21" width="34" height="22" rx="2" fill="none" stroke="#6C3FA8" stroke-width="1.5"/>
-    <text x="32" y="38" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
-          font-weight="700" font-size="18" fill="#6C3FA8">D</text>
+  <defs>
+    <path id="d" fill-rule="evenodd" d="M23 20H34C42 20 46 25.5 46 32S42 44 34 44H23Z M28 25V39H33.5C38 39 40.5 36 40.5 32S38 25 33.5 25Z"/>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="#6C3FA8"/>
+  <rect x="5" y="8" width="42" height="48" rx="3" fill="#fffefb"/>
+  <line x1="49" y1="12" x2="49" y2="52" stroke="#fffefb" stroke-width="3" stroke-dasharray="4 3"/>
+  <use href="#d" fill="#6C3FA8" transform="translate(26 32) scale(1.05) translate(-34.5 -32)"/>
+  <g fill="#fffefb">
+    <rect x="53" y="18" width="7" height="4" rx="1"/>
+    <rect x="53" y="26" width="7" height="4" rx="1"/>
+    <rect x="53" y="34" width="7" height="4" rx="1"/>
+    <rect x="53" y="42" width="7" height="4" rx="1"/>
   </g>
 </svg>
