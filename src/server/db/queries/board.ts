@@ -45,7 +45,7 @@ const tagsAgg = sql<string[]>`coalesce(
 const nextInterview = sql<Date | null>`(
   select min(i.starts_at) from ${interviews} i
    where i.application_id = ${applications}."id" and i.starts_at >= now()
-)`;
+)`.mapWith((value) => (value == null ? null : new Date(value)));
 
 /**
  * The whole board in two queries. Cards whose stage was never set — entries
